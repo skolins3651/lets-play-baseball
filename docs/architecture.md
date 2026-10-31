@@ -150,8 +150,8 @@ No detailed implementation backlog should be created for these systems until the
 
 ## 6. Technology choices (current intentions)
 
-- **Physics implementation:** C# library with no Unity dependencies; initially consider targeting **.NET Standard 2.1** to preserve potential Unity compatibility. Verify target/API compatibility before fixing this as a permanent constraint.
-- **CLI and automated tests:** Current supported .NET LTS SDK (planned: .NET 10); testing framework to be selected during bootstrap.
+- **Physics implementation:** C# library targeting **.NET 10** for M0/M1, independent of Unity and other engine-specific dependencies. Revisit retargeting, multi-targeting, or an adapter when Unity integration becomes an active requirement; do not assume a .NET 10 assembly can load directly into Unity.
+- **CLI and automated tests:** Target **.NET 10**, using the repository-pinned SDK; NUnit with VSTest-compatible tooling for headless automated tests.
 - **Editor:** JetBrains Rider preferred, or VS Code; Git/GitHub for version control.
 - **Experiments/plots:** Python and common numerical/plotting libraries as needed; these are supporting tools, not runtime dependencies of the physics library.
 - **Later presentation:** Unity for 3D visualization and interaction, through an adapter rather than embedded physics authority.
