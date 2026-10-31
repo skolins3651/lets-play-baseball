@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Lpb.Cli/Lpb.Cli.csproj" />
+    <Project Path="src/Lpb.Physics/Lpb.Physics.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Lpb.Physics.Tests/Lpb.Physics.Tests.csproj" />
+  </Folder>
+</Solution>
