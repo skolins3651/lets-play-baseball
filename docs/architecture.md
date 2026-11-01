@@ -1,8 +1,10 @@
 # Let's Play Baseball — Architecture
 
-> **Status:** Working draft v0.2 — October 27, 2026  
-> **Purpose:** Record current architectural decisions and boundaries before repository bootstrap.  
-> **Scope:** Project-wide principles (including deferred reporting and publication systems), Milestone 0 (setup), and Milestone 1 (ball flight). Detailed physical equations, schemas, and API signatures belong in follow-up specifications.
+> **Status:** Working Draft v0.3 — November 1, 2026\
+> **Purpose:** Maintain the current project-wide architecture, summarize approved decisions, and connect workstreams to their detailed specifications.\
+> **Scope:** Project-wide principles (including deferred reporting and publication systems), completed Milestone 0 (setup), and active Milestone 1 (ball flight). Detailed physical equations and contracts live in the linked specialized specifications.
+
+Revision v0.3 adopts the M1 physical conventions and minimal input contracts. The earlier v0.2 revision (October 27, 2026) established the pre-bootstrap baseline; its provisional center-field-oriented axes are superseded below.
 
 ## 1. Vision
 
@@ -20,13 +22,19 @@ The first engineering deliverable is much smaller: a standalone, testable, three
 4. **Explicit contracts, loose coupling.** Subsystems communicate through documented interfaces and data formats. They may depend on clearly defined capabilities, but not on implementation details of other modules.
 5. **Controlled simulation time.** Numerical integration advances according to simulation time, independently of Unity's frame loop. Event handling and interpolation must have documented numerical behavior.
 6. **Reproducibility and verification.** Control inputs, random seeds where relevant, model versions, and numerical settings. Automated tests should distinguish software correctness from empirical validity. Cross-platform numerical results may require tolerances rather than bit-for-bit equality.
-7. **Progressive fidelity.** Physics models and visual detail can improve separately where their contracts permit. A new rendering style must not silently change an already simulated play.
+7. **Progressive fidelity.** Design with the intended full system in mind; implement only complexity justified by the current stage. Add independently testable physical capabilities, preserve useful simplified models and regression tests, and evolve contracts deliberately rather than adding speculative fields, interfaces, or dependencies. Physics models and visual detail can improve separately where their contracts permit. A new rendering style must not silently change an already simulated play.
 8. **Historical integrity.** Historical facts, revisions, reconstructed events, alternate timelines, and generated but uncommitted scenarios must remain distinguishable.
 9. **Preserve independent tools.** Existing subprojects, including the Python baseball-name-generator, need not be rewritten to match LPB's primary implementation language.
 10. **Separate facts, estimates, and narratives.** Canonical events and historical records are distinct from derived metrics, subjective scouting evaluations, statistical claims, and published prose. All outputs should be traceable to their data, assumptions, and model versions.
 11. **Support analytical pluralism.** Multiple fictional organizations may define and publish different defensible metrics or projections from the same observations. Methodology, baselines, calibration, and versioning must be explicit, not hard-coded as one universal rating.
 
 These are working principles subject to revision when prototypes reveal better approaches.
+
+### Documentation relationships
+
+This overview records project-wide responsibilities, current decisions, and planned direction. Specialized workstream specifications own detailed equations, contracts, validation rules, and extended rationale. The current physics specifications are [physical conventions and analytical fixtures](physics/conventions.md) and [gravity-only contracts](physics/gravity-only-contract.md); future active workstreams should be linked here in the same way.
+
+When an approved specialized decision supersedes this overview, update its summary, links, and obsolete guidance together. A newer unapproved draft does not automatically override an approved decision. Preserve useful history with clear labels instead of maintaining competing current guidance.
 
 ## 3. Conceptual subsystem boundaries
 
@@ -62,6 +70,8 @@ The historical/scenario subsystem owns revisions and timeline provenance, analyt
 
 **Goal:** Given initial conditions and an environmental model, compute a physically grounded 3D baseball trajectory and report measurements, with controlled numerical error and documented scientific assumptions.
 
+**Current stage:** Issues #2/#3 establish [physical conventions and analytical fixtures](physics/conventions.md) and the [validated input contracts](physics/gravity-only-contract.md). The runtime contains only `Vector3d`, `FlightState`, and `FlightRequest`; no simulator exists yet. Concrete outputs, executable simulation interfaces, and free-flight integration belong to Issue #4; ground contact and measurements belong to Issue #5. The following scope describes the full milestone, not the requirements of every individual issue.
+
 ### In scope
 
 - Baseball position, linear velocity, spin vector, and relevant physical parameters.
@@ -75,26 +85,27 @@ The historical/scenario subsystem owns revisions and timeline provenance, analyt
 
 Bat-ball contact, swing generation, athlete/fielding dynamics, wall or ground bounces, injuries, baseball game rules, statistical databases, Unity scenes, detailed stadium geometry, precise seam-shifted-wake modeling, and automated journalism/almanac generation. The design should leave room for future advanced aerodynamics without requiring it now.
 
-### Provisional scientific and numerical conventions
+### Adopted physical conventions and initial numerical direction
 
 - Internal units: SI (meters, seconds, kilograms, radians); display conversions only at input/output boundaries.
 - Internally use double-precision vectors and numerical quantities.
-- Preliminary field coordinates: right-handed with **+X** from home plate toward center field, **+Y** toward left field, **+Z** upward. Confirm this before implementation.
-- Represent spin as an angular-velocity vector in radians/second; convert from rpm and axis descriptions at the boundary.
-- Begin with fixed-step fourth-order Runge–Kutta (RK4), compare against an analytic gravity-only trajectory, and test convergence as the step decreases.
+- Field coordinates: a right-handed, orthonormal Cartesian frame fixed to the field, with **+X** along the first-base/right-field foul-line direction, **+Y** along the third-base/left-field foul-line direction, and **+Z** upward. The origin is the rear tip of home plate at reference ground elevation. Ideal center field follows positive `X = Y`; this does not imply a symmetric stadium. See [physical conventions](physics/conventions.md).
+- Eventual spin is a 3D angular-velocity vector in radians/second using the right-hand rule; convert from rpm and axis descriptions at the boundary. Its runtime representation and evolution wait until the relevant physical model requires them.
+- Fixed-step fourth-order Runge–Kutta (RK4) is the intended initial integration baseline for Issue #4, not a permanent restriction on numerical methods. Compare gravity-only results against the independent analytical fixtures; establish solver accuracy, tolerances, and appropriate convergence tests in #4. Constant-acceleration agreement alone does not demonstrate fourth-order convergence for nonconstant forces.
 - Force calculations should be modular (gravity, drag, spin-dependent lift) and accept physical state and environmental conditions rather than engine objects.
 - Identify the ground intersection more precisely than simply stopping at the first time step below ground (e.g., interpolate/refine the crossing).
 - Atmospheric inputs must not double-count altitude and pressure. Document how density and other properties are derived.
 
-The final equations, coefficient choices, timestep, environmental formulas, and physical constants will be selected and cited in a separate M1 physics specification, not assumed final here.
+The gravity-only equations, reference fixtures, and input validation are specified in the linked physics documents. Aerodynamic equations, empirical coefficients, environmental formulas, and additional physical constants remain later M1 work; do not assume they are settled by the gravity-only baseline.
 
 ### M1 phases and exit tests
 
-1. **Scientific specification:** With M0 infrastructure already available, finalize units/coordinates, equations, force-model conventions, and reference test cases.
-2. **Gravity-only motion:** Numerical trajectories agree with analytic projectile-motion solutions within declared tolerances; event detection works.
-3. **Aerodynamics:** Drag, spin-dependent forces, wind, and atmosphere are configurable and independently testable.
-4. **Verification and validation:** Numerical convergence, unit tests, parameter sanity checks, and comparisons with published baseball models/data are documented. Reference agreement is evaluated with matching assumptions rather than assumed.
-5. **Usable prototype:** Run a scenario without graphics; export machine-readable trajectory results; plot or inspect comparisons; document limitations and future integration points.
+1. **Scientific specification and inputs (#2/#3):** Adopt units/coordinates and analytical reference cases; implement and test only the minimal validated inputs, documenting output contracts and component boundaries.
+2. **Gravity-only motion (#4):** Implement free-flight integration and trajectory outputs independent of rendering. Numerical trajectories agree with analytical solutions within declared tolerances, including the requested final time; ground contact remains disabled.
+3. **Termination and measurements (#5):** Refine first ground contact, specify initial-contact edge cases, and report flight measurements without bounce or rolling.
+4. **Aerodynamics:** Drag, spin-dependent forces, wind, and atmosphere are configurable and independently testable, with parameters introduced when required.
+5. **Verification and validation:** Numerical convergence, unit tests, parameter sanity checks, and comparisons with published baseball models/data are documented. Reference agreement is evaluated with matching assumptions rather than assumed; retain gravity-only regression cases.
+6. **Usable prototype:** Run a scenario without graphics; export machine-readable trajectory results; plot or inspect comparisons; document limitations and future integration points.
 
 **Definition of done:** A clean checkout can build, run the headless CLI, pass automated tests, and reproduce documented reference experiments within stated numerical tolerances. A visual game is *not* required.
 
@@ -160,19 +171,15 @@ No detailed implementation backlog should be created for these systems until the
 
 ## 7. Milestone 0 — Minimal project setup
 
+**Status:** Complete; this section preserves the setup history rather than the current task list.
+
 **Purpose:** Prepare only the development infrastructure required to deliver M1. M0 contains no baseball force-model implementation.
 
-1. Review this draft, marking accepted principles versus open decisions.
-2. Create the `lets-play-baseball` GitHub repository once the document is approved; commit the initial architecture documentation.
-3. Create an LPB-wide **GitHub Project** that can track this repository and the existing name-generator repository. Start with a backlog table and a small active-work board.
-4. Set up a repository-native `M1 — Ball Flight Simulator` milestone and a manageable issue backlog. Cross-repository project fields can represent broader LPB phases or targets.
-5. Verify/install Git, the .NET SDK, and a C# editor; do not install Unity, Blender, SQLite, or DuckDB just for M0.
-6. Bootstrap a solution containing a physics library, headless CLI, and test project; add a minimal CI build/test workflow.
-7. Confirm the project builds and tests locally and in CI, then begin the M1 scientific specification and implementation.
+The original setup sequence covered architecture review; repository creation and initial documentation; cross-repository GitHub Project and milestone/backlog setup; Git, SDK, and editor preparation; solution/CLI/test bootstrap; and local/CI validation before beginning M1. Unity, Blender, SQLite, and DuckDB were not prerequisites for that foundation.
 
-**M0 completion criterion:** An accessible repository and tracking board, an agreed initial architecture, a working local C# solution, and passing automated CI. Detailed physics work begins only after that foundation is operational.
+**M0 completion criterion (historical):** An accessible repository and tracking board, an agreed initial architecture, a working local C# solution, and passing automated CI. The completed foundation supports the current M1 work; new changes still require their own validation.
 
-### Suggested initial repository layout
+### Current repository layout
 
 ```text
 lets-play-baseball/
@@ -181,22 +188,23 @@ lets-play-baseball/
 │   └── Lpb.Cli/
 ├── tests/
 │   └── Lpb.Physics.Tests/
-├── research/
 ├── docs/
 │   ├── architecture.md
 │   └── physics/
+│       ├── conventions.md
+│       └── gravity-only-contract.md
 ├── .github/workflows/
 ├── README.md
 └── LPB.slnx
 ```
 
-`docs/architecture.md` is the proposed authoritative location; avoid maintaining duplicate copies.
+`docs/architecture.md` is the project-wide architectural overview; keep detailed specifications in linked workstream documents and avoid duplicate current guidance. A future `research/` directory can hold supporting investigations when needed.
 
 ## 8. Deferred design decisions
 
-- Final coordinate convention, reference frame for pitched balls, and API units.
+- Scenario-specific pitched-ball initial conditions and baseball-friendly input/output conventions; the field frame and internal SI units are established.
 - Scientific source selection and empirical drag/lift coefficients; spin decay and seam effects.
-- Fixed versus adaptive integration and impact-event interpolation tolerances.
+- Issue #4 solver accuracy/convergence requirements and execution limits; future alternative/adaptive methods; Issue #5 impact-event interpolation tolerances. Fixed-step RK4 is the initial baseline.
 - Serialization schemas, replay granularity, and strictness of cross-platform reproducibility.
 - Later collision, biomechanics, statistical, history, and scenario interfaces.
 - Statistical-discovery query/claim schema, editorial evidence bundles, fictional organization/authorship model, publication templates and rendering, and report invalidation/versioning policies.
@@ -212,8 +220,8 @@ Suggested LPB ChatGPT workspaces:
 
 | Chat/workstream | Use when |
 | --- | --- |
-| **LPB — Architecture & Roadmap** | Cross-system decisions, milestone boundaries, GitHub planning, architecture-document revisions; this is the current chat. |
-| **LPB — Physics & Simulation** | Ball-flight equations, integration, biomechanics interfaces, calibration, and physics test design; start when the M1 scientific specification begins. |
+| **LPB — Architecture & Roadmap** | Cross-system decisions, milestone boundaries, GitHub planning, and architecture-document revisions. |
+| **LPB — Physics & Simulation** | Active M1 ball-flight specifications, equations, integration, calibration, and physics test design; later biomechanics interfaces. |
 | **LPB — Database & Statistics** | Historical schemas, statistical definitions, analytical querying, SQLite/DuckDB integration; start when that implementation becomes active. |
 | **LPB — Almanac & Reports** | Trivia discovery, rival in-universe statistical methodologies, journalists/personas, scouting reports, encyclopedia pages, and publication formats; use for substantive report-design discussions, without pulling implementation into M1. |
 | **LPB — Game Logic & AI** | Baseball rules, management AI, personnel development, team operations, and organization-level behavior. |
@@ -223,4 +231,4 @@ Suggested LPB ChatGPT workspaces:
 
 **Routing reminders:** At each transition from architectural discussion to specialized physics or reporting research, suggest the corresponding chat. When a task requires local code/files, command execution, a repository edit, or PR review, suggest Codex or Work and prepare a scoped implementation prompt. When a substantial concept needs learning before implementation, suggest **Learning & Research** and return to the implementation chat with the outcome. Users need not open every suggested chat immediately.
 
-**Current next actions:** Review this architecture revision, then establish the LPB repository and cross-repository GitHub Project in M0. Implement no reporting-related code at this stage.
+**Current next actions:** Independently review the M1 conventions and minimal input contracts, then implement Issue #4's gravity-only integration and outputs after separate authorization. Issue #5 adds contact termination and measurements. Reporting-related implementation remains deferred.

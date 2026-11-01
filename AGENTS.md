@@ -1,9 +1,10 @@
 # LPB contributor guidance
 
-- Read `docs/architecture.md` before changing project structure or behavior.
-- Treat working draft v0.2 as the architecture baseline; keep provisional choices open to review.
+- Read the current `docs/architecture.md` and applicable approved specialized specifications before changing project structure or behavior. Surface material conflicts; a newer draft alone does not supersede an approved decision.
+- Design with the intended full system in mind; implement only complexity justified by the current stage. Preserve useful simplified models and regression tests, and evolve contracts deliberately without speculative fields, interfaces, or dependencies.
+- When implementing approved specialized decisions, update the architecture's summary, links, and superseded guidance. Keep detailed specifications in their workstream documents and distinguish current guidance from historical context.
 - Stay within the milestone and changes authorized by the current task.
-- M0 provides infrastructure only; physical state, forces, and numerical simulation belong to M1.
+- M0 established infrastructure only; physical state, forces, and numerical simulation are introduced progressively in M1.
 - Keep `Lpb.Physics` independent of Unity, rendering, persistence, the CLI, and external services.
 - Keep references directed from CLI/tests to Physics, never the reverse.
 - Use the exact .NET SDK selected by `global.json` on every development machine.
