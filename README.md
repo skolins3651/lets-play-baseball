@@ -2,9 +2,9 @@
 
 A modular, physics-grounded baseball simulation and management project written primarily in C#.
 
-M0 establishes the development foundation: an empty physics library, a headless CLI shell, an automated smoke test, and build/test CI. Physics models, physical state, numerical integration, trajectories, and scientific validation begin in M1.
+M0 established the development foundation: a physics library, a headless CLI shell, an automated smoke test, and build/test CI. M1 now begins with physical conventions and three validated input types: `Vector3d`, `FlightState`, and `FlightRequest`. Numerical integration and trajectory outputs belong to Issue #4; ground contact and measurements belong to Issue #5.
 
-The architecture baseline is [working draft v0.2](docs/architecture.md). The authoritative simulation must remain independent of Unity, rendering, databases, and external runtime services. Future Unity integration may require retargeting, multi-targeting, or an adapter; a .NET 10 assembly is not assumed to load directly into Unity.
+The [current architecture](docs/architecture.md) connects the project-wide design to the [physics conventions and analytical fixtures](docs/physics/conventions.md) and [gravity-only contracts](docs/physics/gravity-only-contract.md). The authoritative simulation must remain independent of Unity, rendering, databases, and external runtime services. Future Unity integration may require retargeting, multi-targeting, or an adapter; a .NET 10 assembly is not assumed to load directly into Unity.
 
 ## Prerequisites
 
@@ -12,17 +12,17 @@ The architecture baseline is [working draft v0.2](docs/architecture.md). The aut
 - [.NET SDK 10.0.403](https://dotnet.microsoft.com/en-us/download/dotnet/10.0), installed on every development computer. A runtime-only installation is insufficient.
 - JetBrains Rider is the preferred editor; the .NET CLI also works independently of an IDE.
 
-All three projects target `net10.0`. Root `global.json` selects exactly SDK `10.0.403`, disables roll-forward, and excludes previews. No additional .NET workloads, Unity, Blender, database, or Python installation is needed for M0.
+All three projects target `net10.0`. Root `global.json` selects exactly SDK `10.0.403`, disables roll-forward, and excludes previews. No additional .NET workloads, Unity, Blender, database, or Python installation is needed for the current M1 input-contract stage.
 
 ## Solution overview
 
 ```text
 LPB.slnx
 src/
-  Lpb.Physics/             Engine-independent library; initially no public types
+  Lpb.Physics/             Engine-independent validated vector, state, and request types
   Lpb.Cli/                 Console shell; references Lpb.Physics
 tests/
-  Lpb.Physics.Tests/       NUnit infrastructure smoke test; references Lpb.Physics
+  Lpb.Physics.Tests/       NUnit contract tests and bootstrap smoke test; references Physics
     packages.lock.json    Locked test dependency graph
 .github/workflows/ci.yml   Linux and Windows build/test workflow
 ```
@@ -41,7 +41,7 @@ dotnet test LPB.slnx --configuration Release --no-build --no-restore -- RunConfi
 dotnet run --project src/Lpb.Cli/Lpb.Cli.csproj --configuration Release --no-build --no-restore
 ```
 
-SDK selection should report `10.0.403`. The smoke test loads and identifies the physics assembly; it establishes project wiring and test execution, not physics correctness. The test command fails if no tests are discovered or executed.
+SDK selection should report `10.0.403`. The smoke test loads and identifies the physics assembly; contract tests cover component/state preservation, construction-time validation, and valid defaults. Numerical trajectories are not implemented or tested yet. The test command fails if no tests are discovered or executed.
 
 The CLI currently accepts invocation without arguments, prints the following line, and exits successfully:
 
@@ -49,7 +49,7 @@ The CLI currently accepts invocation without arguments, prints the following lin
 LPB bootstrap ready. Physics simulation is not implemented.
 ```
 
-No command parser, simulation settings, scenario inputs, or output schema is implemented in M0.
+The CLI remains the bootstrap shell: it has no command parser, scenario-input handling, or simulation output schema. The library's input contracts do not execute a simulation.
 
 ## Test dependencies and reproducibility
 
@@ -112,6 +112,6 @@ For a branch not yet present locally, `git switch` creates a tracking branch fro
 
 ## Continuous integration
 
-The workflow runs on pull requests targeting `main` and pushes to `main`, with `ubuntu-latest` and `windows-latest` jobs. Each job installs the pinned SDK, restores locked dependencies, builds Release, runs the smoke test with zero-test failure enabled, and runs the CLI. It requests only repository-content read permission and includes no coverage, caching, publishing, or deployment steps.
+The workflow runs on pull requests targeting `main` and pushes to `main`, with `ubuntu-latest` and `windows-latest` jobs. Each job installs the pinned SDK, restores locked dependencies, builds Release, runs the full NUnit suite with zero-test failure enabled, and runs the CLI. It requests only repository-content read permission and includes no coverage, caching, publishing, or deployment steps.
 
-Local validation does not establish a passing GitHub Actions run. CI verification remains pending until the workflow is published and executes on GitHub. macOS is validated locally for M0; Windows and Linux execution are checked by the workflow after publication.
+Local validation does not establish a passing GitHub Actions run. Each change requires its own CI verification after publication; Windows and Linux execution are checked by the workflow. macOS validation uses the same commands locally.
