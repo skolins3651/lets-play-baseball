@@ -1,12 +1,12 @@
 # M1 Physics Conventions and Gravity Reference Cases
 
-> **Status:** Provisional M1 working specification — adopted 2026-11-01\
+> **Status:** Provisional M1 working specification — adopted 2026-11-01; executable verification updated 2026-11-02\
 > **Issues:** [#2 — Physical conventions and validation](https://github.com/skolins3651/lets-play-baseball/issues/2); informs [#3](https://github.com/skolins3651/lets-play-baseball/issues/3), [#4](https://github.com/skolins3651/lets-play-baseball/issues/4), and [#5](https://github.com/skolins3651/lets-play-baseball/issues/5)\
 > **Architecture:** [`docs/architecture.md`](../architecture.md) summarizes the adopted conventions and links here for scientific details. This field-coordinate convention replaces the earlier provisional center-field-oriented X/Y proposal.
 
 ## Purpose and scope
 
-Specify the coordinates, physical quantities, simplifications, and analytically solvable trajectories needed to **verify** an initial 3D, gravity-only projectile solver. Issue #2 establishes these documentation fixtures; numerical implementation and executable trajectory tests belong to Issue #4. This document is intentionally not a comprehensive aerodynamics or rigid-body physics specification. More realistic physical effects are introduced in later M1 issues without discarding these baseline tests.
+Specify the coordinates, physical quantities, simplifications, and analytically solvable trajectories needed to **verify** an initial 3D, gravity-only projectile solver. Issue #2 established these documentation fixtures; Issue #4 implements the solver and executable trajectory verification. This document is intentionally not a comprehensive aerodynamics or rigid-body physics specification. More realistic physical effects are introduced in later M1 issues without discarding these baseline tests.
 
 ## Coordinates and units
 
@@ -34,7 +34,15 @@ v(t) = v0 + a*t
 
 This model has **no air resistance**, Magnus force, spin evolution, orientation, wind, bounce, or rule adjudication. A gravity-only solution does not need baseball mass or radius. Starting below `z = 0` is mathematically valid when ground-contact handling is disabled.
 
-The initial intended numerical method for Issue #4 is fixed-step **fourth-order Runge–Kutta (RK4)** with positive finite configurable timestep `dt`, a positive finite requested duration `T`, and a shortened final step if `T/dt` is not an integer. A timestep larger than `T` is valid and requires a single shortened step. RK4 is an initial baseline, not a permanent restriction against later justified numerical methods. The integration method must not be coupled to rendering or the CLI. RK4 under constant acceleration reproduces the analytical trajectory to approximately floating-point precision; this suite tests correctness but does **not** establish fourth-order convergence for nonconstant forces.
+The implemented initial numerical method is fixed-step **fourth-order Runge–Kutta (RK4)** with positive finite nominal timestep `dt`, positive finite requested duration `T`, and a shortened final interval when the indexed grid does not end at `T`. A timestep larger than `T` is valid and requires a single shortened step. RK4 is an initial baseline, not a permanent restriction against later justified numerical methods. The implementation is independent of rendering, wall-clock time, and the CLI; gravity derivative evaluation is separate from RK4 integration. RK4 under constant acceleration reproduces the analytical trajectory to approximately floating-point precision; this suite tests correctness but does **not** establish fourth-order convergence for nonconstant forces.
+
+### Executable timing and numerical limits
+
+`GravityOnlySimulator.Simulate(FlightRequest)` records every step, starting at exactly zero and ending at the exact requested duration. Nominal boundaries are `B(i) = (double)i * dt`; choose the first boundary reaching/exceeding `T`, use earlier indexed boundaries as samples, and assign the terminal timestamp directly from `T`. Integrate each actual endpoint difference. Floating-point rounding makes ordinary intervals differ slightly from nominal `dt`; this is expected, not accumulated timestamp drift.
+
+The provisional limit is 100,000 integration steps and 100,001 samples. Bounded binary-search preflight occurs before allocating samples, using the same indexed multiplication as execution. Excessive requests throw `InvalidOperationException`; null invocation throws `ArgumentNullException`. Unsafe time progression or RK4 arithmetic throws `ArithmeticException`, never a successful partial trajectory. See [the contract](gravity-only-contract.md) for ownership, exact boundary rules, and failure details.
+
+Conventional double arithmetic checks finite derivatives, intermediate states, weighting, increments, and outputs. RK4 also requires positive representable half/sixth coefficients and a strictly interior midpoint. Some finite requests therefore fail: subnormal intervals can lose coefficients, adjacent timestamps may have no midpoint, and large values can overflow intermediate expressions even when a mathematical endpoint is finite. Ordinary small state changes lost below local state precision are allowed. No special scaled arithmetic or universal extreme-input accuracy is promised. Ground contact remains disabled even after a path crosses `z = 0`.
 
 ## Canonical analytical fixtures
 
@@ -49,7 +57,11 @@ Use artificial `g = 10 m/s²` to make answers independently checkable; this is a
 
 All four reach the reference elevation at 2 s. In Cases C/D, the maximum center height is 5 m above the initial elevation, reached at 1 s. The 3D case has horizontal speed `sqrt(6^2 + 8^2) = 10 m/s`, horizontal displacement `(12,16)` m and horizontal distance 20 m. Cases A/B reach their maximum at release (20 m above reference elevation).
 
-**Future Issue #4 verification tests:** assert starting and intermediate state values as well as final state/time within explicitly documented double-precision absolute tolerances. An absolute tolerance of `1e-9` in the relevant SI unit is a **provisional recommendation for these initial analytical gravity fixtures**, not a universal numerical accuracy guarantee. Actual solver tolerances, numerical accuracy, and convergence testing will be reviewed and established in Issue #4. Also test `g = 0` constant velocity, a downward initial velocity, an end time not divisible by `dt`, and one case using standard gravity `9.80665 m/s²` as an additional reference. For example, dropping from `(0,0,20)` m at rest gives `z(2) = 0.3867 m` and `vz(2) = -19.6133 m/s` under standard gravity. Tests should compare against independent analytical formulas, not another invocation of the solver.
+**Implemented Issue #4 verification:** NUnit checks all nine sample times and all six state components for Cases A–D against independently calculated analytical expectations, including the documented one- and two-second values. The accepted absolute tolerance is `1e-9` in metres or metres/second for these fixtures; timestamps, ordering, count, initial state, completion reason, and final-value consistency are checked exactly. This is a fixture-specific tolerance, not a universal accuracy guarantee.
+
+The separate standard-gravity reference uses `g = 9.80665 m/s²`: dropping from `(0,0,20)` m at rest gives `z(1) = 15.096675 m`, `z(2) = 0.3867 m`, and `vz(2) = -19.6133 m/s`, verified within the same absolute tolerance. Additional tests cover zero-gravity constant velocity, downward/negative velocities, below-ground continuation, nondivisible duration, and a timestep greater than duration.
+
+A test-only manufactured evaluator `y' = y` independently verifies four classical RK4 evaluations. At unit step from a component value of one, stage values are `1`, `1.5`, `1.75`, and `2.75`, at times `0`, `0.5`, `0.5`, and `1`; the final value is `65/24`. All six components are checked with absolute tolerance `1e-13`. This distinguishes the algorithm from an analytical constant-gravity shortcut. These checks verify software and the stated gravity equations; they do not establish broad fourth-order convergence or empirical baseball accuracy. Broader convergence and validation remain later work, particularly Issue #10.
 
 ## Ground contact extension (Issue #5; not required for #4)
 
@@ -69,5 +81,5 @@ For contact-aware fixtures, define release height `h` **above contact height** a
 
 - The conventions and analytical fixtures above are adopted as the provisional M1 baseline.
 - [`docs/architecture.md`](../architecture.md) summarizes the same coordinate convention; mathematical details remain here.
-- Issue #3's implemented inputs, validation decisions, and deferred output/interface contracts are documented in [`gravity-only-contract.md`](gravity-only-contract.md).
-- Numerical integration and trajectory verification are Issue #4 work; contact-aware termination and measurements are Issue #5 work.
+- Issue #3's implemented inputs and Issue #4's executable solver/output contracts are documented in [`gravity-only-contract.md`](gravity-only-contract.md). Historical deferrals are labeled there.
+- Numerical integration and focused trajectory verification are implemented in Issue #4; contact-aware termination and measurements remain Issue #5 work, and plotting/comparisons remain Issue #13 work.

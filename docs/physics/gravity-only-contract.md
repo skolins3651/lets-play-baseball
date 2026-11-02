@@ -1,13 +1,13 @@
 # M1 Gravity-Only Simulator Contracts
 
-> **Status:** Provisional M1 working specification — adopted 2026-11-01\
-> **Issues:** [#3 — Physical state objects and simulation interfaces](https://github.com/skolins3651/lets-play-baseball/issues/3), with implementation deferred to [#4](https://github.com/skolins3651/lets-play-baseball/issues/4) and [#5](https://github.com/skolins3651/lets-play-baseball/issues/5) where indicated\
+> **Status:** Provisional M1 working specification — adopted 2026-11-01; Issue #4 implementation updated 2026-11-02\
+> **Issues:** [#3 — Physical state objects and simulation interfaces](https://github.com/skolins3651/lets-play-baseball/issues/3), with executable integration in [#4](https://github.com/skolins3651/lets-play-baseball/issues/4) and contact/measurements deferred to [#5](https://github.com/skolins3651/lets-play-baseball/issues/5)\
 > **Scientific specification:** [`conventions.md`](conventions.md)\
 > **Architecture:** [`docs/architecture.md`](../architecture.md) summarizes the current design; root [`AGENTS.md`](../../AGENTS.md) governs contributions.
 
 ## Purpose
 
-Define the implemented, engine-independent input contracts and the intended future output behavior for the initial gravity-only trajectory simulator. Issue #3 implements only `Vector3d`, `FlightState`, and `FlightRequest`. Output types, executable simulation interfaces, and numerical integration are deferred to Issue #4. The contracts support deliberate evolution for ground-contact events, physical object parameters, aerodynamics, and spin without embedding their behavior now.
+Define the implemented, engine-independent gravity-only simulator, inputs, outputs, and execution policy. Issue #3 established `Vector3d`, `FlightState`, and `FlightRequest`; Issue #4 adds executable RK4 integration and immutable trajectory results. The contracts support deliberate evolution for ground-contact events, physical object parameters, aerodynamics, and spin without embedding their behavior now.
 
 ## Implemented inputs (Issue #3)
 
@@ -29,7 +29,7 @@ FlightRequest
 | `FlightState` | Non-positional immutable `readonly record struct`; `FlightState(Vector3d position, Vector3d velocity)` | Get-only `Vector3d Position`, `Velocity` |
 | `FlightRequest` | Sealed immutable class; `FlightRequest(FlightState initialState, double gravityMagnitude, double duration, double timeStep)` | Get-only `InitialState`, `GravityMagnitude`, `Duration`, `TimeStep` |
 
-`Vector3d` is unit-agnostic: its physical meaning and units come from the consuming property. `FlightState.Position` is ball-center position in metres; `Velocity` is linear velocity in metres/second. Both use the field-fixed coordinates in [`conventions.md`](conventions.md). Vector arithmetic operators and unit-wrapper types are not needed by Issue #3.
+`Vector3d` is unit-agnostic: its physical meaning and units come from the consuming property. `FlightState.Position` is ball-center position in metres; `Velocity` is linear velocity in metres/second. Both use the field-fixed coordinates in [`conventions.md`](conventions.md). No public vector arithmetic operators or unit-wrapper types are needed at this stage.
 
 Standalone simulation starts at `t = 0 s`; time is elapsed simulation time, with no clock field in the initial state. All vector components are finite `double`s. Any coordinate (including negative `z`) and any finite velocity is acceptable **when ground contact is disabled**. Gravity and numerical settings are explicit scalar request properties; separate environment/settings wrapper types are unnecessary at this stage.
 
@@ -37,45 +37,86 @@ The scalar gravity magnitude is part of the initial **constant-gravity dynamics*
 
 No baseball mass, radius, angular velocity, orientation, or air properties are required to run #4. Introduce parameters only when the relevant physical model needs them.
 
-## Intended output (documented now; concrete types deferred to Issue #4)
+## Simulation entry point and output (Issue #4)
 
-The following remains a conceptual shape, not an implemented API:
+The public static entry point is `GravityOnlySimulator.Simulate(FlightRequest request)`. It returns a successful `SimulationResult` or throws. There is no public integrator selector, injection API, or output-sampling setting.
 
-```
+```text
 SimulationResult
-  Samples: ordered sequence of TrajectorySample
-    TrajectorySample
-      Time: double            // s
-      State
-        Position: Vector3d   // m
-        Velocity: Vector3d   // m/s
+  Samples: IReadOnlyList<TrajectorySample>
+    Time: double              // s
+    State: FlightState        // position m, velocity m/s
   FinalState: FlightState
-  FinalTime: double          // s
+  FinalTime: double           // s
   CompletionReason: DurationReached
 ```
 
-- Include the initial sample at exactly `t = 0` and the final sample at the requested `T`. With `T = 2` and `dt = 0.25`, there are **nine** samples.
-- Samples are in increasing simulation-time order. Initially record every integration step, including a shorter final step if necessary; optional independent output sampling can be added later.
-- `FinalState` and `FinalTime` agree with the last sample. Successful completion of #4 is `DurationReached`; #5 introduces `GroundContact` and may need other explicitly documented outcomes (e.g., a maximum-duration limit before contact).
-- Simulation results contain **SI physical values**, not formatted feet/mph strings. Derived reports and user-friendly units are consumers of this data.
-- Failures caused by invalid requests are reported as validation errors, **not** successful simulation results containing invalid values.
+- `TrajectorySample` is a non-positional immutable `readonly record struct`, with constructor `TrajectorySample(double time, FlightState state)` and get-only properties. It rejects nonfinite or negative time with `ArgumentOutOfRangeException(nameof(time))`. Its default value is a valid zero-time, zero-state sample.
+- `SimulationResult` is a sealed immutable class. Its internal constructor `SimulationResult(TrajectorySample[] samples, double requestedDuration)` validates non-null samples, finite positive duration, 2–100,001 samples, finite physical values, initial time exactly zero, strictly increasing times, and terminal time exactly equal to the requested duration. Invalid constructor arguments use standard argument exceptions. Internal visibility restricts construction to the assembly, so every assembly caller still undergoes validation.
+- The constructor clones the supplied array before validating the snapshot. `Samples` exposes a private sealed `ReadOnlyCollection<TrajectorySample>` wrapper around that copy. Its legacy `ICollection.SyncRoot` returns the wrapper itself, preventing the standard wrapper's forwarding behavior from exposing the backing array. Later source-array mutations cannot change a result, and generic/non-generic collection mutation is rejected. No writable backing collection is exposed.
+- Record every integration endpoint, including the initial sample and any shortened final step. With `T = 2` and `dt = 0.25`, there are **nine** samples.
+- `FinalState` and `FinalTime` are derived directly from the terminal sample. The public `CompletionReason` enum contains only `DurationReached`, returned by every successful result. Issue #5 will deliberately extend completion and construction contracts for contact events; no event placeholders exist now.
+- Results contain **SI physical values**, not formatted feet/mph strings. Derived reports and display units are consumers of this data.
+- A returned result always completes the requested trajectory. Invalid invocation, resource rejection, or numerical failure throws without returning an ordinary successful partial result. A future trajectory legitimately ending at a physical event is distinct from execution failure.
+- There is no public result constructor. Historical reconstruction or import may justify a separately designed construction API later; internal construction is not a permanent architectural restriction.
 
 ## Responsibilities and boundaries
 
-| Responsibility | Initial role | Evolution |
+| Responsibility | Implemented component | Evolution |
 |---|---|---|
-| Physical state | Implemented immutable 3D position and velocity values | Add spin/orientation if physics requires them |
-| Environment and physical properties | Gravity magnitude is an implemented scalar input | Add atmosphere/object parameters only when their models require them |
-| Gravity dynamics | Evaluate time derivatives `dr/dt = v`, `dv/dt = (0,0,-g)` | Additional force/dynamics models without hardcoding gravity into integrator |
-| Numerical integrator | Advance the provided differential equations using RK4 | Other methods and state dimensions when justified |
-| Trajectory controller | Validate/coordinate input, stop at `T`, collect samples | Event detection and configurable sampling |
-| Result analysis | Consume states to calculate useful measurements | #5 maximum height, contact time/location, etc. |
+| Physical state | Public immutable `FlightState` | Add spin/orientation if physics requires them |
+| Environment and properties | Explicit scalar gravity in `FlightRequest` | Add atmosphere/object parameters when required |
+| Gravity dynamics | Internal `GravityDynamics` evaluates `dr/dt = v`, `dv/dt = (0,0,-g)` | Additional dynamics without embedding gravity in integration |
+| Scratch derivatives | Internal readonly `FlightDerivative` holds six rates, checked by the integrator | Evolve with the required physical state |
+| Numerical integration | Internal `Rk4Integrator` advances a supplied evaluator | Other methods when justified |
+| Time control | Internal `SimulationTimeGrid` performs bounded preflight and supplies indexed endpoints | Event detection and configurable sampling |
+| Trajectory control | Public static `GravityOnlySimulator` coordinates components and collects samples | Additional models when needed |
+| Result reporting | Public immutable samples/result and completion enum | #5 measurements and contact completion |
 
-This table specifies **boundaries**, not a required one-to-one list of C# interfaces/classes. Only physical state and request inputs are implemented in Issue #3. Dynamics, integration, trajectory control/sampling, and result reporting remain conceptual responsibilities until their implementation stages. A simple future entry point such as `SimulationResult Simulate(FlightRequest request)` may be sufficient; its executable API will be established with Issue #4.
+The integrator's internal executable boundary is:
 
-**Deliberate Issue #3 staging:** The original issue asks for separation "behind explicit interfaces." The approved interpretation is to document the boundaries now and defer executable simulation interfaces until they have concrete responsibilities and implementations in Issue #4. Concrete `TrajectorySample`, `SimulationResult`, and completion-reason types are also deferred. No unused interface hierarchy or placeholder simulation method is introduced. This interpretation must be reconciled with the issue wording before eventual closure; it is not literal implementation of that original task wording.
+```csharp
+FlightState Step(double startTime, double endTime, FlightState state,
+    Func<double, FlightState, FlightDerivative> evaluate);
+```
 
-The future numerical integrator must work with a derivative evaluator rather than embedding a baseball-specific gravity formula throughout its stepping logic. It need not become a completely general solver for arbitrary future bodies on day one. Fixed-step RK4 is the intended initial baseline, not a permanent restriction on future methods. Avoid Unity, CLI, database, and rendering dependencies in `Lpb.Physics`; references continue from CLI/tests **to** Physics only.
+The evaluator receives simulation time and state; gravity currently ignores time. A delegate is sufficient: there is no unused interface hierarchy or general-purpose solver framework. RK4 scratch values stay internal. `InternalsVisibleTo` grants the existing test assembly access for focused numerical tests without reversing project references.
+
+**Historical Issue #3 staging:** Its approved scope documented boundaries and deferred outputs/executable integration until their implementation in #4. Those deferrals are now fulfilled by the components above; the existing input contracts remain unchanged.
+
+Fixed-step RK4 is the initial baseline, not a permanent restriction on future methods. `Lpb.Physics` has no Unity, CLI, database, rendering, or external-service dependencies; references continue from CLI/tests **to** Physics only.
+
+## Indexed time and resource policy
+
+Time starts at exactly zero. Define the nominal boundary `B(i) = (double)i * TimeStep`, using rounded double multiplication. The required step count `N` is the smallest positive integer with `B(N) >= Duration`.
+
+The provisional maximum is **100,000 integration steps**, hence at most **100,001 samples**. This is a revisable execution policy, not an added `FlightRequest` restriction. Before allocating trajectory storage:
+
+1. Compare `B(100000)` with duration; reject if it is smaller.
+2. Otherwise binary-search `[1, 100000]` for the first reaching boundary, in at most 17 iterations.
+3. Allocate exactly `N + 1` sample slots.
+
+No division, `Ceiling`, large integer conversion, or excessive step-count scan is needed. Positive infinity from overflowing boundary multiplication serves only as a preflight upper-bound sentinel. Nonterminal execution endpoints must be finite; the terminal endpoint is assigned directly from the finite requested duration.
+
+For step `i`, use `B(i)` when `i < N`, otherwise the exact requested `Duration`. The effective RK4 interval is `nextTime - currentTime`. Require finite nonnegative current time, a finite strictly later endpoint no greater than duration, and a finite positive interval. The loop executes exactly the bounded preflight count. A timestep greater than duration produces one shortened step.
+
+This indexed definition governs integer-boundary rounding consistently in preflight and execution; it is not exact-real-number division or repeated addition. For example, `dt = 1e300`, `T = 100000d * dt` fits the limit even though `Ceiling(T / dt)` can exceed 100,000. The next representable duration above a finite `B(100000)` exceeds the limit. Ordinary rounding makes effective intervals differ slightly from nominal `dt`; these differences alone are not failures. No tolerance merges distinct requested endpoints, and no duration/timestep is silently changed.
+
+## RK4 numerical safety and failures
+
+With `h = endTime - startTime`, evaluate the classical four stages at the start, midpoint, midpoint, and exact endpoint. Intermediate states are `y + (h/2)k1`, `y + (h/2)k2`, and `y + h*k3`; complete the step as `y + (h/6)*(k1 + 2*k2 + 2*k3 + k4)`, where each `k` is a derivative. This follows the [classical RK4 rule](https://dlmf.nist.gov/3.7#v), without an analytical gravity shortcut.
+
+Require finite positive half-step and sixth-step coefficients, and a representable midpoint strictly inside the interval. Check every derivative component, scaled rate, intermediate state, weighted product/sum, final increment, and completed state. Checks precede public validated-vector construction, keeping numerical failures distinct from input errors.
+
+| Failure | Exception |
+|---|---|
+| Null simulation request | `ArgumentNullException`, parameter `request` |
+| More than 100,000 indexed steps | `InvalidOperationException`, identifying limit and request settings |
+| Unsafe time progression, unrepresentable required coefficient/midpoint, or nonfinite RK4 calculation | `ArithmeticException`, identifying step/time and relevant stage/component |
+
+Use conventional double arithmetic and conservative rejection. Finite constructor inputs do not promise executable RK4: `T = dt = double.Epsilon` loses required coefficients; `T = Math.BitIncrement(1d)`, `dt = 1` leaves a final interval with no representable midpoint. Large finite states or weighted derivatives can overflow even when specialized arithmetic could recover a mathematical endpoint. No scaled-arithmetic framework, clamping, partial success, wall-clock timeout, or random stopping policy is introduced.
+
+Ordinary finite state changes smaller than local state resolution are allowed; an unchanged rounded component alone is not failure. Useful relative accuracy is not guaranteed for every extreme finite request. Operation ordering and stopping depend on simulation inputs, while cross-platform physical comparisons use declared tolerances rather than a promise of bitwise identity. Time-contract comparisons are exact.
 
 ## Validation policy
 
@@ -89,9 +130,9 @@ At construction, reject:
 
 No rule prohibits negative coordinates or velocity components. Zero gravity and a timestep larger than duration are valid. Every finite component is accepted; gravity has no upper bound, and duration/timestep accept every finite strictly positive value. No arbitrary magnitude or resource restrictions are imposed by these constructors.
 
-The structs have explicit validating constructors and get-only properties, with no public setters or `init` accessors. Zero-initialized `default(Vector3d)` and `new Vector3d()` are valid zero vectors; default/parameterless `FlightState` is valid at the origin with zero velocity. Record copying cannot introduce invalid values through public property assignment. `FlightRequest` has only its validating constructor; `default(FlightRequest)` is null rather than a constructed request. A future simulation entry point must reject null requests.
+The structs have explicit validating constructors and get-only properties, with no public setters or `init` accessors. Zero-initialized `default(Vector3d)` and `new Vector3d()` are valid zero vectors; default/parameterless `FlightState` is valid at the origin with zero velocity. Record copying cannot introduce invalid values through public property assignment. `FlightRequest` has only its validating constructor; `default(FlightRequest)` is null rather than a constructed request. The simulation entry point rejects null requests.
 
-Finite inputs alone do not guarantee representable intermediate results or practical sample counts. Issue #4 must address numerical overflow, time-step progress, and excessive sample allocation explicitly; execution limits must be documented rather than silently truncating output. Added physical parameters will need model-specific validation when introduced (e.g., positive radius for a contacting sphere).
+Finite inputs alone do not guarantee representable intermediate results or practical sample counts. The execution safeguards above address overflow, progression, and sample allocation without changing constructor acceptance. Added physical parameters will need model-specific validation when introduced (e.g., positive radius for a contacting sphere).
 
 Issue #3's NUnit tests cover valid construction, component/state preservation, nonfinite values, invalid scalar ranges, parameter-specific errors, legitimate negative values, zero gravity, valid struct defaults, and representative small/large finite values. They do not execute trajectories.
 
@@ -101,16 +142,16 @@ Add the properties `GroundElevation: double` (m) and `BallRadius: double` (m, po
 
 ## Verification and change discipline
 
-- Use the independent analytical fixtures in [`conventions.md`](conventions.md) as permanent gravity-only, aerodynamics-disabled regression tests during #4 and beyond. Their suggested `1e-9` absolute tolerance is provisional for the initial fixtures; actual numerical accuracy and convergence requirements are reviewed in #4.
+- Use the independent analytical fixtures in [`conventions.md`](conventions.md) as permanent gravity-only, aerodynamics-disabled regression tests during #4 and beyond. Their accepted `1e-9` absolute tolerance applies to the small analytical fixtures only, not all possible inputs. A test-only manufactured nonconstant derivative separately verifies RK4 stages and weighting at `1e-13`; broader convergence studies remain in #10.
 - Keep RK4 intermediate states and scratch derivatives internal; the output contracts need only time-stamped physical states and completion information.
 - Add tests for exact ending time when the step does not divide `T`; avoid results whose final time exceeds the requested duration.
 - When new physics demands additional inputs/state variables, evolve these contracts deliberately with corresponding regression tests. **Extendability means controlled evolution, not a promise to never change public APIs.**
-- Do not add CLI parsing, persistence, wind, drag, Magnus, seam geometry, or physics-based collision response as part of Issue #3's minimal implementation.
+- Do not add CLI parsing, persistence, wind, drag, Magnus, seam geometry, or collision response as part of the gravity-only baseline.
 
 ## Questions intentionally left for later work
 
-- Concrete output types, completion-reason representation, and executable simulation interface design for Issue #4.
 - Whether/how to make integration method or output sampling publicly configurable beyond the initial fixed RK4/every-step contract.
-- Runtime resource limits for large `T / dt` requests and any future streaming/decimation behavior.
+- Revision of the provisional resource policy and any future streaming/decimation behavior.
+- Specialized arithmetic for extreme inputs, broader convergence studies (#10), and empirical validation.
 - Detailed ground-contact edge cases and accuracy rules for Issue #5.
 - Whether rotational state is constant, evolving, or orientation-coupled in later aerodynamic models.
