@@ -1,10 +1,10 @@
 # Let's Play Baseball — Architecture
 
-> **Status:** Working Draft v0.3 — November 1, 2026\
+> **Status:** Working Draft v0.4 — November 2, 2026\
 > **Purpose:** Maintain the current project-wide architecture, summarize approved decisions, and connect workstreams to their detailed specifications.\
 > **Scope:** Project-wide principles (including deferred reporting and publication systems), completed Milestone 0 (setup), and active Milestone 1 (ball flight). Detailed physical equations and contracts live in the linked specialized specifications.
 
-Revision v0.3 adopts the M1 physical conventions and minimal input contracts. The earlier v0.2 revision (October 27, 2026) established the pre-bootstrap baseline; its provisional center-field-oriented axes are superseded below.
+Revision v0.4 records the first executable gravity-only simulator, immutable trajectory outputs, and numerical execution policy. Revision v0.3 (November 1, 2026) adopted the M1 physical conventions and minimal input contracts. The earlier v0.2 revision (October 27, 2026) established the pre-bootstrap baseline; its provisional center-field-oriented axes are superseded below.
 
 ## 1. Vision
 
@@ -70,7 +70,7 @@ The historical/scenario subsystem owns revisions and timeline provenance, analyt
 
 **Goal:** Given initial conditions and an environmental model, compute a physically grounded 3D baseball trajectory and report measurements, with controlled numerical error and documented scientific assumptions.
 
-**Current stage:** Issues #2/#3 establish [physical conventions and analytical fixtures](physics/conventions.md) and the [validated input contracts](physics/gravity-only-contract.md). The runtime contains only `Vector3d`, `FlightState`, and `FlightRequest`; no simulator exists yet. Concrete outputs, executable simulation interfaces, and free-flight integration belong to Issue #4; ground contact and measurements belong to Issue #5. The following scope describes the full milestone, not the requirements of every individual issue.
+**Current stage:** Issues #2/#3 established [physical conventions and analytical fixtures](physics/conventions.md) and validated inputs. Issue #4 adds the headless `GravityOnlySimulator`, classical RK4 with separate gravity derivatives, and immutable `TrajectorySample`/`SimulationResult` outputs with `DurationReached` completion. The [gravity-only contract](physics/gravity-only-contract.md) owns the detailed APIs, ownership, timing, resource policy, and failures. Ground contact and measurements remain in Issue #5; the CLI remains a bootstrap shell. The following scope describes the full milestone, not the requirements of every individual issue.
 
 ### In scope
 
@@ -91,7 +91,8 @@ Bat-ball contact, swing generation, athlete/fielding dynamics, wall or ground bo
 - Internally use double-precision vectors and numerical quantities.
 - Field coordinates: a right-handed, orthonormal Cartesian frame fixed to the field, with **+X** along the first-base/right-field foul-line direction, **+Y** along the third-base/left-field foul-line direction, and **+Z** upward. The origin is the rear tip of home plate at reference ground elevation. Ideal center field follows positive `X = Y`; this does not imply a symmetric stadium. See [physical conventions](physics/conventions.md).
 - Eventual spin is a 3D angular-velocity vector in radians/second using the right-hand rule; convert from rpm and axis descriptions at the boundary. Its runtime representation and evolution wait until the relevant physical model requires them.
-- Fixed-step fourth-order Runge–Kutta (RK4) is the intended initial integration baseline for Issue #4, not a permanent restriction on numerical methods. Compare gravity-only results against the independent analytical fixtures; establish solver accuracy, tolerances, and appropriate convergence tests in #4. Constant-acceleration agreement alone does not demonstrate fourth-order convergence for nonconstant forces.
+- Fixed-step fourth-order Runge–Kutta (RK4) is the implemented initial baseline, with an internal time/state derivative-evaluator boundary; it is not a permanent restriction on methods. Independent analytical fixtures use declared absolute tolerances, and a manufactured nonconstant derivative verifies RK4 stages/weighting. Constant-acceleration agreement alone does not demonstrate fourth-order convergence; broader studies remain in #10.
+- Indexed simulation-time boundaries avoid accumulated timestamp drift; every successful trajectory includes zero and the exact requested duration. Preflight caps execution at 100,000 integration steps/100,001 samples. Immutable results own their samples; unsafe arithmetic or unrepresentable progression throws rather than returning partial success. Detailed rules and limitations live in the [gravity-only contract](physics/gravity-only-contract.md).
 - Force calculations should be modular (gravity, drag, spin-dependent lift) and accept physical state and environmental conditions rather than engine objects.
 - Identify the ground intersection more precisely than simply stopping at the first time step below ground (e.g., interpolate/refine the crossing).
 - Atmospheric inputs must not double-count altitude and pressure. Document how density and other properties are derived.
@@ -101,7 +102,7 @@ The gravity-only equations, reference fixtures, and input validation are specifi
 ### M1 phases and exit tests
 
 1. **Scientific specification and inputs (#2/#3):** Adopt units/coordinates and analytical reference cases; implement and test only the minimal validated inputs, documenting output contracts and component boundaries.
-2. **Gravity-only motion (#4):** Implement free-flight integration and trajectory outputs independent of rendering. Numerical trajectories agree with analytical solutions within declared tolerances, including the requested final time; ground contact remains disabled.
+2. **Gravity-only motion (#4):** Free-flight integration, immutable outputs, bounded execution, and focused numerical tests are implemented independently of rendering. Numerical trajectories agree with analytical fixtures within declared tolerances, including the requested final time; ground contact remains disabled.
 3. **Termination and measurements (#5):** Refine first ground contact, specify initial-contact edge cases, and report flight measurements without bounce or rolling.
 4. **Aerodynamics:** Drag, spin-dependent forces, wind, and atmosphere are configurable and independently testable, with parameters introduced when required.
 5. **Verification and validation:** Numerical convergence, unit tests, parameter sanity checks, and comparisons with published baseball models/data are documented. Reference agreement is evaluated with matching assumptions rather than assumed; retain gravity-only regression cases.
@@ -204,7 +205,7 @@ lets-play-baseball/
 
 - Scenario-specific pitched-ball initial conditions and baseball-friendly input/output conventions; the field frame and internal SI units are established.
 - Scientific source selection and empirical drag/lift coefficients; spin decay and seam effects.
-- Issue #4 solver accuracy/convergence requirements and execution limits; future alternative/adaptive methods; Issue #5 impact-event interpolation tolerances. Fixed-step RK4 is the initial baseline.
+- Broader solver convergence and practical accuracy across physical models (#10), future alternative/adaptive methods, specialized arithmetic for extreme inputs, and Issue #5 impact-event interpolation tolerances. Issue #4 establishes fixture-specific tolerances and a provisional execution limit; fixed-step RK4 is the current baseline.
 - Serialization schemas, replay granularity, and strictness of cross-platform reproducibility.
 - Later collision, biomechanics, statistical, history, and scenario interfaces.
 - Statistical-discovery query/claim schema, editorial evidence bundles, fictional organization/authorship model, publication templates and rendering, and report invalidation/versioning policies.
@@ -231,4 +232,4 @@ Suggested LPB ChatGPT workspaces:
 
 **Routing reminders:** At each transition from architectural discussion to specialized physics or reporting research, suggest the corresponding chat. When a task requires local code/files, command execution, a repository edit, or PR review, suggest Codex or Work and prepare a scoped implementation prompt. When a substantial concept needs learning before implementation, suggest **Learning & Research** and return to the implementation chat with the outcome. Users need not open every suggested chat immediately.
 
-**Current next actions:** Independently review the M1 conventions and minimal input contracts, then implement Issue #4's gravity-only integration and outputs after separate authorization. Issue #5 adds contact termination and measurements. Reporting-related implementation remains deferred.
+**Current next actions:** Independently review Issue #4's local solver, outputs, safeguards, tests, and documentation before separately authorizing publication and Linux/Windows CI verification. Issue #5 then adds contact termination and measurements; broader numerical studies (#10), export/CLI work, and plotting (#13) remain separate tasks. Reporting-related implementation remains deferred.

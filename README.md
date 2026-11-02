@@ -2,7 +2,7 @@
 
 A modular, physics-grounded baseball simulation and management project written primarily in C#.
 
-M0 established the development foundation: a physics library, a headless CLI shell, an automated smoke test, and build/test CI. M1 now begins with physical conventions and three validated input types: `Vector3d`, `FlightState`, and `FlightRequest`. Numerical integration and trajectory outputs belong to Issue #4; ground contact and measurements belong to Issue #5.
+M0 established the development foundation: a physics library, a headless CLI shell, an automated smoke test, and build/test CI. M1 now includes validated physical inputs and a working headless gravity-only library simulator using fourth-order Runge–Kutta (RK4), with immutable trajectory outputs and numerical safeguards. Ground contact and measurements remain in Issue #5.
 
 The [current architecture](docs/architecture.md) connects the project-wide design to the [physics conventions and analytical fixtures](docs/physics/conventions.md) and [gravity-only contracts](docs/physics/gravity-only-contract.md). The authoritative simulation must remain independent of Unity, rendering, databases, and external runtime services. Future Unity integration may require retargeting, multi-targeting, or an adapter; a .NET 10 assembly is not assumed to load directly into Unity.
 
@@ -12,17 +12,17 @@ The [current architecture](docs/architecture.md) connects the project-wide desig
 - [.NET SDK 10.0.403](https://dotnet.microsoft.com/en-us/download/dotnet/10.0), installed on every development computer. A runtime-only installation is insufficient.
 - JetBrains Rider is the preferred editor; the .NET CLI also works independently of an IDE.
 
-All three projects target `net10.0`. Root `global.json` selects exactly SDK `10.0.403`, disables roll-forward, and excludes previews. No additional .NET workloads, Unity, Blender, database, or Python installation is needed for the current M1 input-contract stage.
+All three projects target `net10.0`. Root `global.json` selects exactly SDK `10.0.403`, disables roll-forward, and excludes previews. No additional .NET workloads, Unity, Blender, database, or Python installation is needed for the current gravity-only M1 stage.
 
 ## Solution overview
 
 ```text
 LPB.slnx
 src/
-  Lpb.Physics/             Engine-independent validated vector, state, and request types
+  Lpb.Physics/             Engine-independent gravity-only RK4 simulator and immutable contracts
   Lpb.Cli/                 Console shell; references Lpb.Physics
 tests/
-  Lpb.Physics.Tests/       NUnit contract tests and bootstrap smoke test; references Physics
+  Lpb.Physics.Tests/       NUnit analytical, RK4, safety, contract, and smoke tests; references Physics
     packages.lock.json    Locked test dependency graph
 .github/workflows/ci.yml   Linux and Windows build/test workflow
 ```
@@ -41,7 +41,7 @@ dotnet test LPB.slnx --configuration Release --no-build --no-restore -- RunConfi
 dotnet run --project src/Lpb.Cli/Lpb.Cli.csproj --configuration Release --no-build --no-restore
 ```
 
-SDK selection should report `10.0.403`. The smoke test loads and identifies the physics assembly; contract tests cover component/state preservation, construction-time validation, and valid defaults. Numerical trajectories are not implemented or tested yet. The test command fails if no tests are discovered or executed.
+SDK selection should report `10.0.403`. The smoke and input-contract tests remain intact. Numerical tests verify all four analytical gravity fixtures and a separate standard-gravity reference at `1e-9` absolute SI tolerance; a manufactured nonconstant derivative verifies the four RK4 stages and weighting at `1e-13`. Further tests cover immutable outputs, indexed timing, resource boundaries, and numerical failures. These tolerances apply to the specified fixtures, not arbitrary requests. The test command fails if no tests are discovered or executed.
 
 The CLI currently accepts invocation without arguments, prints the following line, and exits successfully:
 
@@ -49,7 +49,30 @@ The CLI currently accepts invocation without arguments, prints the following lin
 LPB bootstrap ready. Physics simulation is not implemented.
 ```
 
-The CLI remains the bootstrap shell: it has no command parser, scenario-input handling, or simulation output schema. The library's input contracts do not execute a simulation.
+This is legacy bootstrap-shell text, preserved until the CLI workstream replaces it; it no longer describes the library's capabilities. The CLI still has no command parser, scenario-input handling, simulation command, or export schema.
+
+## Gravity-only library API
+
+A C# consumer referencing `Lpb.Physics` can execute a trajectory directly:
+
+```csharp
+using Lpb.Physics;
+
+var request = new FlightRequest(
+    new FlightState(new Vector3d(0, 0, 0), new Vector3d(6, 8, 10)),
+    gravityMagnitude: 10,
+    duration: 2,
+    timeStep: 0.25);
+SimulationResult result = GravityOnlySimulator.Simulate(request);
+// Nine samples, including t = 0 and exactly t = 2 seconds.
+FlightState finalState = result.FinalState;
+```
+
+Position is ball-centre position in metres; velocity is metres/second in the documented field frame. Gravity is explicit and acts along negative Z. `TrajectorySample` contains time and state. `SimulationResult.Samples` is an owned, immutable snapshot; final state/time come directly from its last sample, and the only completion reason is `DurationReached`.
+
+The nominal timestep defines indexed double-precision boundaries rather than repeated additions. The final interval is shortened as necessary to reach the exact requested duration; a timestep larger than duration is valid. Preflight rejects more than **100,000 steps / 100,001 samples** before trajectory allocation. Null invocation throws `ArgumentNullException`, resource rejection throws `InvalidOperationException`, and unsafe arithmetic or unrepresentable time stages throw `ArithmeticException`. Failures never return a partial successful result. See [the contract](docs/physics/gravity-only-contract.md) for exact grid and representability rules.
+
+The model has constant gravity only: no ground-contact handling, landing measurements, air resistance, wind, spin, CLI scenarios, exports, or plots. Paths continue below the reference ground plane. Finite inputs can still overflow RK4 arithmetic or lack representable stage times; ordinary double rounding also limits precision. No claim of general convergence or empirical baseball accuracy follows from these baseline verification tests.
 
 ## Test dependencies and reproducibility
 
