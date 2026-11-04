@@ -4,5 +4,8 @@ namespace Lpb.Physics;
 public enum CompletionReason
 {
     /// <summary>The trajectory reached the exact requested simulation duration.</summary>
-    DurationReached
+    DurationReached,
+
+    /// <summary>The ball first touched the configured ground plane.</summary>
+    GroundContact
 }
