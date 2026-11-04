@@ -4,6 +4,25 @@ namespace Lpb.Physics.Tests;
 
 public class SimulationTimeGridTests
 {
+    [Test]
+    public void EarlyTerminationBudgetDoesNotSubstituteDurationForLastIndexedBoundary()
+    {
+        var grid = new SimulationTimeGrid(new FlightRequest(default, 0, 1_000_000, 1), requireWholeHorizon: false);
+        Assert.That(grid.StepCount, Is.EqualTo(100000));
+        Assert.That(grid.GetNextTime(100000, 99999), Is.EqualTo(100000));
+    }
+
+    [TestCase(double.MaxValue, double.MaxValue)]
+    [TestCase(1, 0.3)]
+    public void EarlyTerminationGridStillUsesExactRequestedEndWhenReached(double duration, double dt)
+    {
+        var grid = new SimulationTimeGrid(new FlightRequest(default, 0, duration, dt), requireWholeHorizon: false);
+        var time = 0d;
+        for (var step = 1; step <= grid.StepCount; step++)
+            time = grid.GetNextTime(step, time);
+        Assert.That(time, Is.EqualTo(duration));
+    }
+
     [TestCase(2, 0.25, 8)]
     [TestCase(1, 0.3, 4)]
     [TestCase(1, 2, 1)]

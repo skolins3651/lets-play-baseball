@@ -1,6 +1,6 @@
 # M1 Physics Conventions and Gravity Reference Cases
 
-> **Status:** Provisional M1 working specification — adopted 2026-11-01; executable verification updated 2026-11-02\
+> **Status:** Provisional M1 working specification — adopted 2026-11-01; contact and measurement verification updated 2026-11-03\
 > **Issues:** [#2 — Physical conventions and validation](https://github.com/skolins3651/lets-play-baseball/issues/2); informs [#3](https://github.com/skolins3651/lets-play-baseball/issues/3), [#4](https://github.com/skolins3651/lets-play-baseball/issues/4), and [#5](https://github.com/skolins3651/lets-play-baseball/issues/5)\
 > **Architecture:** [`docs/architecture.md`](../architecture.md) summarizes the adopted conventions and links here for scientific details. This field-coordinate convention replaces the earlier provisional center-field-oriented X/Y proposal.
 
@@ -63,11 +63,23 @@ The separate standard-gravity reference uses `g = 9.80665 m/s²`: dropping from 
 
 A test-only manufactured evaluator `y' = y` independently verifies four classical RK4 evaluations. At unit step from a component value of one, stage values are `1`, `1.5`, `1.75`, and `2.75`, at times `0`, `0.5`, `0.5`, and `1`; the final value is `65/24`. All six components are checked with absolute tolerance `1e-13`. This distinguishes the algorithm from an analytical constant-gravity shortcut. These checks verify software and the stated gravity equations; they do not establish broad fourth-order convergence or empirical baseball accuracy. Broader convergence and validation remain later work, particularly Issue #10.
 
-## Ground contact extension (Issue #5; not required for #4)
+## Ground contact and measurement verification (Issue #5)
 
-A flat ground surface has configurable elevation `zg`. A spherical ball with radius `R > 0` first touches it when **center height** reaches `zg + R`, on a relevant downward crossing. An initially touching ball moving upward should be allowed to launch; an initially touching ball moving downward requires explicit termination behavior. Detect the crossing time between numerical steps rather than treating the first below-ground sample as the landing instant.
+A flat ground surface has configurable elevation `zg`. A spherical ball with radius `R > 0` first touches it when **center height** reaches `zg + R`, on a relevant downward crossing. An initially touching ball moving upward is allowed to launch. An initially touching stationary or descending ball terminates immediately. Initial penetration is rejected using exact comparisons, without a geometric tolerance. Detect the crossing time between numerical steps rather than treating the first below-ground sample as the landing instant.
+
+Geometry must have finite elevation, finite positive radius, and a finite rounded center-contact height strictly above ground elevation. Reject a radius absorbed by floating-point addition. For a zero center-contact plane, use `GroundContactSettings(-0.05, 0.05)`, not zero ground elevation with positive radius.
 
 For contact-aware fixtures, define release height `h` **above contact height** and set `z0 = zg + R + h`. This avoids confusing the center's `z` coordinate with the ball's lowest point. Ground contact, bounce, rolling, and fair/foul rulings are separate physical/rules features: #5 handles only first-contact termination and reporting.
+
+### Independent contact and apex references
+
+For test references only, let `h = z0 - (zg + R)`. For positive gravity, the descending contact root is `(vz0 + sqrt(vz0² + 2*g*h)) / g`; use `2*h / (sqrt(vz0² + 2*g*h) - vz0)` for a downward release to avoid cancellation. An upward release at contact returns at `2*vz0/g`. For zero gravity and downward velocity, contact time is `h / -vz0`. Compute X/Y and velocity from the independent equations above.
+
+For positive gravity and upward initial velocity, the analytical apex is at `vz0/g`, restricted to the actual simulated interval. Initially descending paths maximize at release. Constant-height paths use the earliest time, zero. These equations are verification references, never production shortcuts.
+
+Contact fixtures include the four canonical launch directions translated by contact height, nonzero ground elevation/radius, standard gravity, and coarse steps spanning both launch and return. Small fixtures use `1e-10 s` event/apex time and `1e-9` SI state/height comparisons; exact timestamps, geometry, ownership, and completion invariants remain exact. These do not promise universal accumulated integration accuracy.
+
+Near-horizon fixtures use zero center-contact height, zero gravity, `vz0 = -1`, `T = 1`, and release center heights `1 - 2^-32`, `1`, and `1 + 2^-32`. They distinguish contact before/at/after duration; the last stays airborne even though its final height is below the localization height tolerance. A stationary near-plane flight also remains airborne. See [the contract](gravity-only-contract.md) for numerical refinement, bounded projection, and resource policies.
 
 ## Deferred capabilities and explicit non-decisions
 
@@ -82,4 +94,4 @@ For contact-aware fixtures, define release height `h` **above contact height** a
 - The conventions and analytical fixtures above are adopted as the provisional M1 baseline.
 - [`docs/architecture.md`](../architecture.md) summarizes the same coordinate convention; mathematical details remain here.
 - Issue #3's implemented inputs and Issue #4's executable solver/output contracts are documented in [`gravity-only-contract.md`](gravity-only-contract.md). Historical deferrals are labeled there.
-- Numerical integration and focused trajectory verification are implemented in Issue #4; contact-aware termination and measurements remain Issue #5 work, and plotting/comparisons remain Issue #13 work.
+- Numerical integration and focused trajectory verification are implemented in Issue #4; contact-aware termination and optional measurements are implemented in Issue #5. Minimum useful visualization is a separate follow-up before drag; broader plotting/comparisons remain later work.

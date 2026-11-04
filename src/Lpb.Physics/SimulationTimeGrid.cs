@@ -7,7 +7,11 @@ internal readonly struct SimulationTimeGrid
     private readonly double duration;
     private readonly double timeStep;
 
-    internal SimulationTimeGrid(FlightRequest request)
+    internal SimulationTimeGrid(FlightRequest request) : this(request, requireWholeHorizon: true)
+    {
+    }
+
+    internal SimulationTimeGrid(FlightRequest request, bool requireWholeHorizon)
     {
         ArgumentNullException.ThrowIfNull(request);
         duration = request.Duration;
@@ -16,6 +20,12 @@ internal readonly struct SimulationTimeGrid
         // Positive infinity is allowed only as a preflight upper-bound sentinel.
         if (Boundary(MaximumIntegrationSteps, timeStep) < duration)
         {
+            if (!requireWholeHorizon)
+            {
+                StepCount = MaximumIntegrationSteps;
+                return;
+            }
+
             throw new InvalidOperationException(
                 $"The request exceeds the {MaximumIntegrationSteps} integration-step limit " +
                 $"(duration {duration:R} s, timestep {timeStep:R} s).");
@@ -48,7 +58,9 @@ internal readonly struct SimulationTimeGrid
             throw new ArgumentOutOfRangeException(nameof(stepIndex));
         }
 
-        var nextTime = stepIndex == StepCount ? duration : Boundary(stepIndex, timeStep);
+        // Exhausting the execution budget does not mean the requested horizon was reached.
+        var boundary = Boundary(stepIndex, timeStep);
+        var nextTime = boundary >= duration ? duration : boundary;
         var interval = nextTime - currentTime;
         if (!double.IsFinite(currentTime) || currentTime < 0 ||
             !double.IsFinite(nextTime) || nextTime <= currentTime || nextTime > duration ||

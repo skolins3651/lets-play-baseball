@@ -2,7 +2,7 @@
 
 A modular, physics-grounded baseball simulation and management project written primarily in C#.
 
-M0 established the development foundation: a physics library, a headless CLI shell, an automated smoke test, and build/test CI. M1 now includes validated physical inputs and a working headless gravity-only library simulator using fourth-order Runge–Kutta (RK4), with immutable trajectory outputs and numerical safeguards. Ground contact and measurements remain in Issue #5.
+M0 established the development foundation: a physics library, a headless CLI shell, an automated smoke test, and build/test CI. M1 now includes validated physical inputs and a working headless gravity-only library simulator using fourth-order Runge–Kutta (RK4), with immutable trajectory outputs and numerical safeguards. Issue #5 adds first-ground-contact termination and optional trajectory evaluation and measurements.
 
 The [current architecture](docs/architecture.md) connects the project-wide design to the [physics conventions and analytical fixtures](docs/physics/conventions.md) and [gravity-only contracts](docs/physics/gravity-only-contract.md). The authoritative simulation must remain independent of Unity, rendering, databases, and external runtime services. Future Unity integration may require retargeting, multi-targeting, or an adapter; a .NET 10 assembly is not assumed to load directly into Unity.
 
@@ -68,11 +68,31 @@ SimulationResult result = GravityOnlySimulator.Simulate(request);
 FlightState finalState = result.FinalState;
 ```
 
-Position is ball-centre position in metres; velocity is metres/second in the documented field frame. Gravity is explicit and acts along negative Z. `TrajectorySample` contains time and state. `SimulationResult.Samples` is an owned, immutable snapshot; final state/time come directly from its last sample, and the only completion reason is `DurationReached`.
+Position is ball-centre position in metres; velocity is metres/second in the documented field frame. Gravity is explicit and acts along negative Z. `TrajectorySample` contains time and state. `SimulationResult.Samples` is an owned, immutable snapshot; final state/time come directly from its last sample, and completion is `DurationReached` or `GroundContact`. The unconstrained API above still always reaches duration.
 
 The nominal timestep defines indexed double-precision boundaries rather than repeated additions. The final interval is shortened as necessary to reach the exact requested duration; a timestep larger than duration is valid. Preflight rejects more than **100,000 steps / 100,001 samples** before trajectory allocation. Null invocation throws `ArgumentNullException`, resource rejection throws `InvalidOperationException`, and unsafe arithmetic or unrepresentable time stages throw `ArithmeticException`. Failures never return a partial successful result. See [the contract](docs/physics/gravity-only-contract.md) for exact grid and representability rules.
 
-The model has constant gravity only: no ground-contact handling, landing measurements, air resistance, wind, spin, CLI scenarios, exports, or plots. Paths continue below the reference ground plane. Finite inputs can still overflow RK4 arithmetic or lack representable stage times; ordinary double rounding also limits precision. No claim of general convergence or empirical baseball accuracy follows from these baseline verification tests.
+Contact-aware execution is explicit:
+
+```csharp
+var contact = new GroundContactSettings(groundElevation: -0.05, ballRadius: 0.05);
+var maximumDuration = new FlightRequest(request.InitialState, 10, 5, 0.3);
+var landing = GravityOnlySimulator.SimulateUntilGroundContact(maximumDuration, contact);
+TrajectorySample? contactSample = TrajectoryMeasurements.GetGroundContact(landing);
+Vector3d displacement = TrajectoryMeasurements.GetDisplacement(landing);
+Vector3d horizontal = TrajectoryMeasurements.GetHorizontalDisplacement(landing); // Z = 0
+TrajectorySample maximum = GravityOnlyTrajectory.GetMaximumHeight(landing, maximumDuration);
+FlightState interior = GravityOnlyTrajectory.Evaluate(landing, maximumDuration, 0.5);
+// Contact time is landing.FinalTime; contactSample describes the ball center, not the ground point.
+```
+
+Contact height is ground elevation plus positive radius. Reject nonfinite geometry and a radius too small to increase the representable elevation. Exact initial contact moving upward launches; stationary/downward contact returns one sample at zero; penetration is rejected. Contact at duration takes precedence. Unfinished flights return no landing data.
+
+Contact-aware execution caps **actual ordinary work at 100,000 steps**, allowing long requested horizons with early contact. Budget exhaustion throws instead of jumping to duration. Contact and same-step apex searches each allow at most 128 additional evaluations. All local contact bounds must pass: `1e-10 s` time width, `1e-9 m` height residual/position uncertainty, and `1e-9 m/s` velocity uncertainty. Only then may terminal center Z be projected onto the plane. These bounds do not replace accumulated integration-error assessment.
+
+Measurements are optional. Numerical analysis requires explicit matching request values and private immutable provenance supplied by **both** simulator APIs. Recorded timestamps return stored states exactly; interior evaluation uses RK4 without projection. Maximum height is continuous over the actual interval, including between samples, with earliest time for constant height. Numerical inability to resolve a required event or analysis query throws `ArithmeticException`.
+
+The model has constant gravity only: no air resistance, wind, spin, bounce, rolling, CLI scenarios, exports, or plots. Unconstrained paths continue below the reference ground plane. Minimum useful visualization is planned separately before drag. Finite inputs can still overflow RK4 arithmetic or lack representable stage times; ordinary double rounding also limits precision. No claim of general convergence or empirical baseball accuracy follows from these baseline verification tests.
 
 ## Test dependencies and reproducibility
 

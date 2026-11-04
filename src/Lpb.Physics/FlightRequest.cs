@@ -4,8 +4,8 @@ namespace Lpb.Physics;
 /// Immutable inputs for a gravity-only trajectory starting at elapsed simulation time zero.
 /// </summary>
 /// <remarks>
-/// This input contract does not execute a simulation. Ground contact is disabled;
-/// no mass, radius, spin, or air properties are required.
+/// This input contract does not execute a simulation. Free flight requires no radius;
+/// contact-aware simulation receives separate ground/ball geometry. No mass, spin, or air properties are required.
 /// </remarks>
 public sealed class FlightRequest
 {
