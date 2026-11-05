@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LPB · Trajectory lab</title>
+    <link rel="stylesheet" href="styles.css">
+    <script defer src="vendor/plotly-gl3d-4.1.2.min.js"></script>
+    <script defer src="app-state.js"></script>
+    <script defer src="app.js"></script>
+</head>
+<body>
+    <header class="masthead"><div><p class="eyebrow">LET’S PLAY BASEBALL / M1 · 5.5</p><h1>Trajectory lab<span>Gravity only</span></h1></div><p class="privacy">Local experiments<br><strong>Temporary · no history saved</strong></p></header>
+    <main class="workspace">
+        <aside class="controls">
+            <form id="launch-form">
+                <div class="section-title"><h2>Launch conditions</h2><span class="pill" id="pending" aria-live="polite">Not run</span></div>
+                <p class="help">Ball-center motion under constant gravity. No drag, wind, spin, bounce, or baseball-rule decisions.</p>
+                <div class="input-grid">
+                    <label>Launch speed <span>mph</span><input name="speedMph" type="number" min="0" step="any" value="100" required></label>
+                    <label>Elevation <span>degrees</span><input name="elevationDegrees" type="number" min="-90" max="90" step="any" value="30" required></label>
+                    <label class="wide">Field azimuth <span>degrees</span><input name="fieldAzimuthDegrees" type="number" min="-180" max="180" step="any" value="45" required><small>0° → first base / +X · 45° → center · 90° → third base / +Y. Negative directions are allowed.</small></label>
+                    <label class="wide">Initial center height above local ground <span>ft</span><input name="centerHeightFeet" type="number" step="any" value="3" required><small>Center height, not clearance beneath the ball. Signed heights are valid in unconstrained mode.</small></label>
+                    <label>Ground elevation <span>ft</span><input name="groundElevationFeet" type="number" step="any" value="0" required></label>
+                    <label>Ball radius <span>in</span><input name="ballRadiusInches" type="number" min="0" step="any" value="1.45" required></label>
+                    <label class="wide">Flight mode<select name="mode"><option value="contact">Stop at first ground contact</option><option value="unconstrained">Unconstrained — ignore ground contact</option></select><small>Contact is the ball center reaching ground elevation plus radius. Unconstrained flight can continue below ground.</small></label>
+                </div>
+                <h3>Numerical integration</h3>
+                <div class="input-grid">
+                    <label class="wide">Gravity magnitude <span>m/s²</span><input name="gravityMagnitude" type="number" min="0" step="any" value="9.80665" required></label>
+                    <label>Timestep <span>s</span><input name="timeStepSeconds" type="number" min="0" step="any" value="0.01" required></label>
+                    <label>Duration limit <span>s</span><input name="durationSeconds" type="number" min="0" step="any" value="10" required></label>
+                </div>
+                <p class="help">Timestep controls RK4 integration intervals. A smaller step is a numerical setting, independent of how many points are plotted.</p>
+                <button id="run" type="submit">Run simulation <span aria-hidden="true">↗</span></button>
+            </form>
+            <section class="density"><h3>Display density</h3><label>Requested path points<input id="display-count" type="number" min="2" max="2000" step="1" value="300" required></label><button id="resample" type="button" class="secondary" disabled>Apply density</button><p class="help">2–2,000 points, including endpoints. Reuses the last successful simulation; it does not apply edited launch inputs.</p></section>
+        </aside>
+        <section class="results" aria-label="Simulation results">
+            <section class="run-context"><div class="section-title"><h2 id="run-label">Ready to experiment</h2><span id="mode-label" class="quiet">No simulation yet</span></div><p id="captured">Run the default launch or enter your own settings. The displayed result will retain its executed settings.</p><p id="operation" role="status" aria-live="polite"></p><div id="errors" role="alert" hidden></div></section>
+            <div id="metrics" class="metrics"></div>
+            <div id="diagnostics" class="diagnostics" aria-live="polite"></div>
+            <section class="plot-panel"><div class="plot-heading"><h2>01 / Field trajectory</h2><span>XYZ · field origin · feet</span></div><div id="plot-3d" class="plot primary"><p class="empty">Your trajectory will appear here.</p></div></section>
+            <div class="projections">
+                <section class="plot-panel"><div class="plot-heading"><h2>02 / Side profile</h2><span>Height above local ground</span></div><div id="plot-side" class="plot"></div></section>
+                <section class="plot-panel"><div class="plot-heading"><h2>03 / Top-down</h2><span>Field X / Y</span></div><div id="plot-top" class="plot"></div></section>
+            </div>
+            <p class="footnote">Schematic ball-center geometry · equal distance scales · markers identify numerical states. Lines connect plotted points. A smoother display does not establish numerical or real-world accuracy.</p>
+        </section>
+    </main>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 A modular, physics-grounded baseball simulation and management project written primarily in C#.
 
-M0 established the development foundation: a physics library, a headless CLI shell, an automated smoke test, and build/test CI. M1 now includes validated physical inputs and a working headless gravity-only library simulator using fourth-order Runge–Kutta (RK4), with immutable trajectory outputs and numerical safeguards. Issue #5 adds first-ground-contact termination and optional trajectory evaluation and measurements.
+M0 established the development foundation. M1 includes validated inputs, gravity-only fourth-order Runge–Kutta (RK4), immutable results, first-ground-contact termination, and optional trajectory analysis. Internal milestone **5.5 ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19))** adds a local interactive trajectory debugger before aerodynamic drag. Its Phase B implementation awaits independent source review before publication.
 
 The [current architecture](docs/architecture.md) connects the project-wide design to the [physics conventions and analytical fixtures](docs/physics/conventions.md) and [gravity-only contracts](docs/physics/gravity-only-contract.md). The authoritative simulation must remain independent of Unity, rendering, databases, and external runtime services. Future Unity integration may require retargeting, multi-targeting, or an adapter; a .NET 10 assembly is not assumed to load directly into Unity.
 
@@ -12,7 +12,7 @@ The [current architecture](docs/architecture.md) connects the project-wide desig
 - [.NET SDK 10.0.403](https://dotnet.microsoft.com/en-us/download/dotnet/10.0), installed on every development computer. A runtime-only installation is insufficient.
 - JetBrains Rider is the preferred editor; the .NET CLI also works independently of an IDE.
 
-All three projects target `net10.0`. Root `global.json` selects exactly SDK `10.0.403`, disables roll-forward, and excludes previews. No additional .NET workloads, Unity, Blender, database, or Python installation is needed for the current gravity-only M1 stage.
+All five projects target `net10.0`. Root `global.json` selects exactly SDK `10.0.403`, disables roll-forward, and excludes previews. No additional .NET workloads, Unity, Blender, database, Python, Node.js, or frontend package installation is needed. The visualizer uses the ASP.NET Core shared framework included with the SDK and a modern browser with WebGL for its 3D view.
 
 ## Solution overview
 
@@ -21,9 +21,12 @@ LPB.slnx
 src/
   Lpb.Physics/             Engine-independent gravity-only RK4 simulator and immutable contracts
   Lpb.Cli/                 Console shell; references Lpb.Physics
+  Lpb.Visualizer/          Loopback ASP.NET Core app and locally bundled Plotly.js; references Physics
 tests/
   Lpb.Physics.Tests/       NUnit analytical, RK4, safety, contract, and smoke tests; references Physics
     packages.lock.json    Locked test dependency graph
+  Lpb.Visualizer.Tests/    Adapter, sampling, ownership, and HTTP tests; browser-state harness
+    packages.lock.json    Locked visualizer test dependency graph
 .github/workflows/ci.yml   Linux and Windows build/test workflow
 ```
 
@@ -50,6 +53,20 @@ LPB bootstrap ready. Physics simulation is not implemented.
 ```
 
 This is legacy bootstrap-shell text, preserved until the CLI workstream replaces it; it no longer describes the library's capabilities. The CLI still has no command parser, scenario-input handling, simulation command, or export schema.
+
+## Local trajectory visualizer
+
+From the repository root, on macOS or Windows PowerShell:
+
+```sh
+dotnet run --project src/Lpb.Visualizer/Lpb.Visualizer.csproj
+```
+
+Open [http://localhost:5055](http://localhost:5055), enter launch settings, and press **Run simulation**. After a Release build, add `--configuration Release --no-build --no-restore`. Change an occupied port with `-- --port 5056`; binding remains loopback-only. Stop with Ctrl+C.
+
+Three coordinated views display the same C# numerical trajectory. Speed defaults to mph; distances to feet; radius to inches. Integration timestep and plotted-point count are separate controls. **Apply density** reuses the captured last successful run even when launch inputs have pending edits. All experiments are temporary; refresh, expiry, eviction, or shutdown can lose them. No historical saves or exports are provided.
+
+See the [visualizer guide](docs/visualizer.md) for controls, exact directions, coordinate references, numerical fallbacks, HTTP ownership, limits, and browser verification. Plotly.js 4.1.2 is bundled locally with its [license and provenance](src/Lpb.Visualizer/wwwroot/vendor/README.md); no CDN is used at runtime.
 
 ## Gravity-only library API
 
@@ -92,21 +109,22 @@ Contact-aware execution caps **actual ordinary work at 100,000 steps**, allowing
 
 Measurements are optional. Numerical analysis requires explicit matching request values and private immutable provenance supplied by **both** simulator APIs. Recorded timestamps return stored states exactly; interior evaluation uses RK4 without projection. Maximum height is continuous over the actual interval, including between samples, with earliest time for constant height. Numerical inability to resolve a required event or analysis query throws `ArithmeticException`.
 
-The model has constant gravity only: no air resistance, wind, spin, bounce, rolling, CLI scenarios, exports, or plots. Unconstrained paths continue below the reference ground plane. Minimum useful visualization is planned separately before drag. Finite inputs can still overflow RK4 arithmetic or lack representable stage times; ordinary double rounding also limits precision. No claim of general convergence or empirical baseball accuracy follows from these baseline verification tests.
+The model has constant gravity only: no air resistance, wind, spin, bounce, or rolling. The separate visualizer consumes this library; CLI scenarios, structured exports, and comparison plotting remain later work. Unconstrained paths continue below ground. Finite inputs can still overflow RK4 arithmetic or lack representable stage times; ordinary double rounding also limits precision. No claim of general convergence or empirical baseball accuracy follows from these baseline verification tests.
 
 ## Test dependencies and reproducibility
 
-Only the test project has direct NuGet dependencies:
+Only the test projects have direct NuGet dependencies:
 
 | Package | Version | Purpose |
 | --- | --- | --- |
 | NUnit | 5.0.0 | Test framework; includes a .NET 10 target |
 | NUnit3TestAdapter | 6.3.1 | NUnit discovery/execution through VSTest |
 | Microsoft.NET.Test.Sdk | 18.11.0 | VSTest test-host/build integration |
+| Microsoft.AspNetCore.Mvc.Testing | 10.0.14 | Visualizer tests only; HTTP test host and static-content integration |
 
 NUnit 5 is selected over the older SDK-template version. See the [NUnit release notes](https://docs.nunit.org/articles/nunit/release-notes/framework.html) and the [adapter package](https://www.nuget.org/packages/NUnit3TestAdapter/6.3.1). Despite its name, `NUnit3TestAdapter` supports newer NUnit frameworks. The project uses VSTest; it does not opt into Microsoft.Testing.Platform. Native Rider runner support for a new NUnit major release may differ; the documented CLI test command is the shared validation path.
 
-The test project enables NuGet lock-file generation, and its `packages.lock.json` is checked in. The dependency-free CLI and physics library do not need lock files. Locked solution restore validates the test dependency graph while restoring all three projects. Initial restore needs access to NuGet; subsequent builds and tests reuse restored dependencies.
+Both test projects enable NuGet lock-file generation and check in their `packages.lock.json`. CLI, Physics, and Visualizer have no direct NuGet package dependencies and do not need lock files. Locked solution restore validates both test graphs while restoring all five projects. Initial restore needs access to NuGet; subsequent builds and tests reuse restored dependencies. The visualizer runtime has no analytics or telemetry service; existing test-tool transitive packages are confined to tests.
 
 When deliberately changing package versions, edit the test project, run `dotnet restore LPB.slnx --force-evaluate`, review the lock-file diff, and repeat the validation commands above. Commit the project and lock-file changes together when publication is authorized.
 

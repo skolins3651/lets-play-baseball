@@ -2,8 +2,10 @@
   <Folder Name="/src/">
     <Project Path="src/Lpb.Cli/Lpb.Cli.csproj" />
     <Project Path="src/Lpb.Physics/Lpb.Physics.csproj" />
+    <Project Path="src/Lpb.Visualizer/Lpb.Visualizer.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Lpb.Physics.Tests/Lpb.Physics.Tests.csproj" />
+    <Project Path="tests/Lpb.Visualizer.Tests/Lpb.Visualizer.Tests.csproj" />
   </Folder>
 </Solution>

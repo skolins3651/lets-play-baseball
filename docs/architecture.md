@@ -1,10 +1,10 @@
 # Let's Play Baseball — Architecture
 
-> **Status:** Working Draft v0.5 — November 3, 2026\
+> **Status:** Working Draft v0.6 — November 5, 2026\
 > **Purpose:** Maintain the current project-wide architecture, summarize approved decisions, and connect workstreams to their detailed specifications.\
 > **Scope:** Project-wide principles (including deferred reporting and publication systems), completed Milestone 0 (setup), and active Milestone 1 (ball flight). Detailed physical equations and contracts live in the linked specialized specifications.
 
-Revision v0.5 adds first-contact termination, explicit-context continuous evaluation, optional measurements, and actual-work budgets for contact-aware flights. Revision v0.4 records the first executable gravity-only simulator, immutable trajectory outputs, and numerical execution policy. Revision v0.3 (November 1, 2026) adopted the M1 physical conventions and minimal input contracts. The earlier v0.2 revision (October 27, 2026) established the pre-bootstrap baseline; its provisional center-field-oriented axes are superseded below.
+Revision v0.6 records the approved local visualizer boundary and ephemeral debugging policy for internal milestone 5.5 ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19)); local Phase B implementation awaits independent review. Revision v0.5 adds first-contact termination, continuous evaluation, optional measurements, and actual-work budgets. Revision v0.4 records the first executable gravity-only simulator. Revision v0.3 adopted the M1 physical conventions and minimal inputs. Earlier v0.2's provisional center-field-oriented axes remain superseded.
 
 ## 1. Vision
 
@@ -32,7 +32,7 @@ These are working principles subject to revision when prototypes reveal better a
 
 ### Documentation relationships
 
-This overview records project-wide responsibilities, current decisions, and planned direction. Specialized workstream specifications own detailed equations, contracts, validation rules, and extended rationale. The current physics specifications are [physical conventions and analytical fixtures](physics/conventions.md) and [gravity-only contracts](physics/gravity-only-contract.md); future active workstreams should be linked here in the same way.
+This overview records project-wide responsibilities, current decisions, and planned direction. Specialized workstream specifications own detailed equations, contracts, validation rules, and extended rationale. The current physics specifications are [physical conventions and analytical fixtures](physics/conventions.md) and [gravity-only contracts](physics/gravity-only-contract.md). The [visualizer guide and application contract](visualizer.md) owns presentation, temporary ownership, and private HTTP details. Future active workstreams should be linked here in the same way.
 
 When an approved specialized decision supersedes this overview, update its summary, links, and obsolete guidance together. A newer unapproved draft does not automatically override an approved decision. Preserve useful history with clear labels instead of maintaining competing current guidance.
 
@@ -49,7 +49,7 @@ When an approved specialized decision supersedes this overview, update its summa
 | **Statistical discovery** | Structured searches for records, streaks, rare events, and defensible situational trivia | Future |
 | **Reports and publishing** | Verified facts for game recaps, analytical articles, scouting reports, rankings, biographies, team/season almanac pages, and export | Future |
 | **In-universe organizations and authors** | Organizations, analyst identities, methodological affiliations, editorial voice, publication history, and canonical identities | Future |
-| **Presentation** | Unity UI, 3D models, skeletal animation, audio, replays, and visual interpolation | Future |
+| **Presentation** | Local scientific trajectory debugger; later Unity UI, 3D models, skeletal animation, audio, and replays | Local debugger in M1 5.5; game presentation future |
 | **External generators** | Names and other independently developed content generators accessed through contracts | Existing name generator; LPB integration later |
 
 This is a **logical** decomposition, not a decision to create eight repositories or network services. Prefer ordinary libraries, clean interfaces, and lightweight adapters until demonstrated requirements justify more complexity. Multiple rows may be logical modules within one library or application; this table does not mandate separate services.
@@ -71,6 +71,14 @@ The historical/scenario subsystem owns revisions and timeline provenance, analyt
 **Goal:** Given initial conditions and an environmental model, compute a physically grounded 3D baseball trajectory and report measurements, with controlled numerical error and documented scientific assumptions.
 
 **Current stage:** Issues #2/#3 established [physical conventions and analytical fixtures](physics/conventions.md) and validated inputs. Issue #4 adds the headless `GravityOnlySimulator`, classical RK4 with separate gravity derivatives, and immutable `TrajectorySample`/`SimulationResult` outputs with `DurationReached` completion. The [gravity-only contract](physics/gravity-only-contract.md) owns the detailed APIs, ownership, timing, resource policy, and failures. Issue #5 adds `SimulateUntilGroundContact`, immutable contact geometry, bounded numerical event refinement, and optional sample-only/gravity-specific analysis. Free flight remains unconstrained; the CLI remains a bootstrap shell. The following scope describes the full milestone, not the requirements of every individual issue.
+
+### Minimum interactive visualizer (5.5 / Issue #19)
+
+`Lpb.Visualizer` is a loopback ASP.NET Core application using locally bundled Plotly.js and direct Physics references. It runs one gravity-only experiment, retains its immutable result/request temporarily, and uses the approved continuous evaluation API for bounded plotting samples independent of numerical timestep. Three views share the same numerical points. Measurements and landmarks remain independent of path decimation; optional failures do not invalidate a successful simulation.
+
+Friendly input conversions, exact cardinal directions, and field-Z versus ground-relative-height transforms belong to the application adapter/presentation boundary. Captured executed settings remain distinguishable from pending form edits. Private UI JSON is not a public export schema.
+
+Debugging results are ephemeral: one per tab, four retained process-wide, 15-minute idle expiration and LRU eviction. No historical records, browser scenario storage, file saves, telemetry, or exports. A future historical viewer requires a separate historical-data subsystem. Details and future C2C/reference/comparison considerations live in the [visualizer guide](visualizer.md).
 
 ### In scope
 
@@ -104,9 +112,10 @@ The gravity-only equations, reference fixtures, and input validation are specifi
 1. **Scientific specification and inputs (#2/#3):** Adopt units/coordinates and analytical reference cases; implement and test only the minimal validated inputs, documenting output contracts and component boundaries.
 2. **Gravity-only motion (#4):** Free-flight integration, immutable outputs, bounded execution, and focused numerical tests are implemented independently of rendering. Numerical trajectories agree with analytical fixtures within declared tolerances, including the requested final time; ground contact remains disabled.
 3. **Termination and measurements (#5):** First ground contact, exact initial-condition policies, optional continuous evaluation, and on-demand measurements are implemented without bounce or rolling.
-4. **Aerodynamics:** Drag, spin-dependent forces, wind, and atmosphere are configurable and independently testable, with parameters introduced when required.
-5. **Verification and validation:** Numerical convergence, unit tests, parameter sanity checks, and comparisons with published baseball models/data are documented. Reference agreement is evaluated with matching assumptions rather than assumed; retain gravity-only regression cases.
-6. **Usable prototype:** Run a scenario without graphics; export machine-readable trajectory results; plot or inspect comparisons; document limitations and future integration points.
+4. **Minimum visual debugging (5.5 / #19):** Inspect one temporary gravity-only experiment interactively before drag, without implementing CLI exports, analytical references, or comparison tools.
+5. **Aerodynamics:** Drag, spin-dependent forces, wind, and atmosphere are configurable and independently testable, with parameters introduced when required.
+6. **Verification and validation:** Numerical convergence, unit tests, parameter sanity checks, and comparisons with published baseball models/data are documented. Reference agreement is evaluated with matching assumptions rather than assumed; retain gravity-only regression cases.
+7. **Usable prototype:** Run a scenario without graphics; export machine-readable trajectory results; plot or inspect comparisons; document limitations and future integration points. Export/comparison responsibilities remain #12–13.
 
 **Definition of done:** A clean checkout can build, run the headless CLI, pass automated tests, and reproduce documented reference experiments within stated numerical tolerances. A visual game is *not* required.
 
@@ -165,7 +174,7 @@ No detailed implementation backlog should be created for these systems until the
 - **Physics implementation:** C# library targeting **.NET 10** for M0/M1, independent of Unity and other engine-specific dependencies. Revisit retargeting, multi-targeting, or an adapter when Unity integration becomes an active requirement; do not assume a .NET 10 assembly can load directly into Unity.
 - **CLI and automated tests:** Target **.NET 10**, using the repository-pinned SDK; NUnit with VSTest-compatible tooling for headless automated tests.
 - **Editor:** JetBrains Rider preferred, or VS Code; Git/GitHub for version control.
-- **Experiments/plots:** Python and common numerical/plotting libraries as needed; these are supporting tools, not runtime dependencies of the physics library.
+- **Current interactive debugger:** ASP.NET Core on the pinned .NET SDK, plain HTML/CSS/JavaScript, locally bundled Plotly.js gl3d. No Node.js or Python runtime requirement. The earlier Python plotting suggestion remains an option for later research/comparison tools, not the 5.5 runtime.
 - **Later presentation:** Unity for 3D visualization and interaction, through an adapter rather than embedded physics authority.
 - **Later data:** SQLite for canonical transactional state; DuckDB and possibly Parquet for analytical workloads. Neither belongs in the M1 runtime merely to prepare for future features.
 - **Existing generator:** Keep `baseball-name-generator` in Python and independent. A future versioned JSON/CLI-style integration can carry names, profile metadata, and seed/provenance information.
@@ -186,11 +195,14 @@ The original setup sequence covered architecture review; repository creation and
 lets-play-baseball/
 ├── src/
 │   ├── Lpb.Physics/
-│   └── Lpb.Cli/
+│   ├── Lpb.Cli/
+│   └── Lpb.Visualizer/
 ├── tests/
-│   └── Lpb.Physics.Tests/
+│   ├── Lpb.Physics.Tests/
+│   └── Lpb.Visualizer.Tests/
 ├── docs/
 │   ├── architecture.md
+│   ├── visualizer.md
 │   └── physics/
 │       ├── conventions.md
 │       └── gravity-only-contract.md
@@ -203,7 +215,7 @@ lets-play-baseball/
 
 ## 8. Deferred design decisions
 
-- Scenario-specific pitched-ball initial conditions and baseball-friendly input/output conventions; the field frame and internal SI units are established.
+- Scenario-specific pitched-ball conditions and alternative C2C unit/angle conventions. Basic friendly units and exact-cardinal conversion are defined for the local visualizer; the field frame and internal SI units remain unchanged.
 - Scientific source selection and empirical drag/lift coefficients; spin decay and seam effects.
 - Broader solver convergence and practical accuracy across physical models (#10), future alternative/adaptive methods, specialized arithmetic for extreme inputs. Issue #5 localization tolerances and limitations are specified in the gravity-only contract. Issue #4 establishes fixture-specific tolerances and a provisional execution limit; fixed-step RK4 is the current baseline.
 - Serialization schemas, replay granularity, and strictness of cross-platform reproducibility.
@@ -232,4 +244,4 @@ Suggested LPB ChatGPT workspaces:
 
 **Routing reminders:** At each transition from architectural discussion to specialized physics or reporting research, suggest the corresponding chat. When a task requires local code/files, command execution, a repository edit, or PR review, suggest Codex or Work and prepare a scoped implementation prompt. When a substantial concept needs learning before implementation, suggest **Learning & Research** and return to the implementation chat with the outcome. Users need not open every suggested chat immediately.
 
-**Current next actions:** Independently review Issue #5's local implementation before separately authorizing publication and Linux/Windows CI verification. A minimum useful visualization/debugging follow-up is planned before aerodynamic drag (#6), potentially advancing portions of #12–13; it is not part of Issue #5. Broader numerical studies (#10), CLI/export work, and reporting remain separate tasks.
+**Current next actions:** Independently review Issue #19's local Phase B visualizer implementation before separately authorizing Phase C publication and Linux/Windows CI verification. Issue #5 was merged through PR #18. Aerodynamic drag (#6), numerical studies (#10), empirical validation (#11), CLI/export (#12), broader plotting/comparison (#13), and reporting remain separate tasks; the visualizer does not complete those workstreams.
