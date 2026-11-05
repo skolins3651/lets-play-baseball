@@ -1,1 +1,4 @@
 * text=auto eol=lf
+
+# Preserve pinned upstream bytes; review this minified vendor asset by version, license, and checksum.
+src/Lpb.Visualizer/wwwroot/vendor/plotly-gl3d-4.1.2.min.js -text -diff

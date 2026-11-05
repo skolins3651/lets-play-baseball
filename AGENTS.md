@@ -6,7 +6,7 @@
 - Stay within the milestone and changes authorized by the current task.
 - M0 established infrastructure only; physical state, forces, and numerical simulation are introduced progressively in M1.
 - Keep `Lpb.Physics` independent of Unity, rendering, persistence, the CLI, and external services.
-- Keep references directed from CLI/tests to Physics, never the reverse.
+- Keep references directed from CLI/Visualizer/tests to Physics, never the reverse. The visualizer owns presentation transforms and temporary debugging results; Physics remains authoritative.
 - Use the exact .NET SDK selected by `global.json` on every development machine.
 - Prefer ordinary C#/.NET conventions and small, maintainable changes.
 - Add dependencies or abstractions only for active requirements.
