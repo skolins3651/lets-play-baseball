@@ -1,7 +1,7 @@
 namespace Lpb.Physics;
 
 /// <summary>
-/// The immutable ball-centre position and linear velocity for gravity-only free flight.
+/// The immutable ball-centre position and linear velocity for flight.
 /// </summary>
 /// <remarks>
 /// Uses the field-fixed, right-handed frame: +X toward first base/right field,

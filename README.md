@@ -2,9 +2,9 @@
 
 A modular, physics-grounded baseball simulation and management project written primarily in C#.
 
-M0 established the development foundation. M1 includes validated inputs, gravity-only fourth-order Runge–Kutta (RK4), immutable results, first-ground-contact termination, and optional trajectory analysis. Internal milestone **5.5 ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19))** adds a local interactive trajectory debugger before aerodynamic drag. Its Phase B implementation awaits independent source review before publication.
+M0 established the development foundation. M1 includes gravity-only and gravity-plus-quadratic-drag RK4, immutable results, first-ground-contact termination, and optional continuous trajectory analysis. Issue #6 is implemented locally for independent review before publication. The gravity-only Trajectory Lab ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19)) was merged through PR #20; a drag model selector remains a separate follow-up.
 
-The [current architecture](docs/architecture.md) connects the project-wide design to the [physics conventions and analytical fixtures](docs/physics/conventions.md) and [gravity-only contracts](docs/physics/gravity-only-contract.md). The authoritative simulation must remain independent of Unity, rendering, databases, and external runtime services. Future Unity integration may require retargeting, multi-targeting, or an adapter; a .NET 10 assembly is not assumed to load directly into Unity.
+The [current architecture](docs/architecture.md) connects the project-wide design to the [physics conventions and analytical fixtures](docs/physics/conventions.md), [gravity-only contracts](docs/physics/gravity-only-contract.md), and [drag contracts and verification](docs/physics/drag-model.md). The authoritative simulation must remain independent of Unity, rendering, databases, and external runtime services. Future Unity integration may require retargeting, multi-targeting, or an adapter; a .NET 10 assembly is not assumed to load directly into Unity.
 
 ## Prerequisites
 
@@ -19,7 +19,7 @@ All five projects target `net10.0`. Root `global.json` selects exactly SDK `10.0
 ```text
 LPB.slnx
 src/
-  Lpb.Physics/             Engine-independent gravity-only RK4 simulator and immutable contracts
+  Lpb.Physics/             Engine-independent gravity/drag RK4, shared execution, and immutable contracts
   Lpb.Cli/                 Console shell; references Lpb.Physics
   Lpb.Visualizer/          Loopback ASP.NET Core app and locally bundled Plotly.js; references Physics
 tests/
@@ -110,6 +110,30 @@ Contact-aware execution caps **actual ordinary work at 100,000 steps**, allowing
 Measurements are optional. Numerical analysis requires explicit matching request values and private immutable provenance supplied by **both** simulator APIs. Recorded timestamps return stored states exactly; interior evaluation uses RK4 without projection. Maximum height is continuous over the actual interval, including between samples, with earliest time for constant height. Numerical inability to resolve a required event or analysis query throws `ArithmeticException`.
 
 The model has constant gravity only: no air resistance, wind, spin, bounce, or rolling. The separate visualizer consumes this library; CLI scenarios, structured exports, and comparison plotting remain later work. Unconstrained paths continue below ground. Finite inputs can still overflow RK4 arithmetic or lack representable stage times; ordinary double rounding also limits precision. No claim of general convergence or empirical baseball accuracy follows from these baseline verification tests.
+
+## Gravity-plus-drag library API
+
+The common `FlightRequest` constructor is unchanged. Aerodynamic parameters are explicit immutable assumptions, with no constructor defaults:
+
+```csharp
+var aerodynamics = new AerodynamicSettings(
+    ballMass: 0.145, ballRadius: 0.0366, airDensity: 1.225, dragCoefficient: 0.35);
+var flight = new FlightRequest(
+    new FlightState(new Vector3d(0, 0, 1.0366), new Vector3d(30, 20, 25)),
+    gravityMagnitude: 9.80665, duration: 6, timeStep: 0.01);
+var drag = GravityDragSimulator.SimulateUntilGroundContact(flight, aerodynamics, groundElevation: 0);
+var state = GravityDragTrajectory.Evaluate(drag, flight, aerodynamics, 1.2345);
+var apex = GravityDragTrajectory.GetMaximumHeight(drag, flight, aerodynamics);
+// drag.ModelKind == FlightModelKind.GravityAndDrag
+```
+
+`GravityDragSimulator.Simulate(flight, aerodynamics)` provides unconstrained flight. Contact takes ground elevation only and derives the ball radius from the aerodynamic configuration. Mass/radius must be finite and positive; density/coefficient finite and nonnegative. The values above illustrate baseball-scale inputs and are not calibrated parameters.
+
+Enabled drag compares one full RK4 step against two half-steps in **all six components**, accepting raw differences no greater than `1e-8 m` / `1e-8 m/s` and applying representation and model-sign checks. It retains the full-step state, does not adapt the requested timestep, and throws when required checks fail. Event refinement uses separate bounded numerical criteria and a checked interior apex witness. These observed checks do not certify global trajectory error or empirical baseball accuracy.
+
+A zero density or coefficient reuses established gravity computation and event guarantees while retaining **drag identity and complete aerodynamic provenance**. Gravity-only evaluators reject that result; drag evaluators accept equivalent matching configurations and reject mismatches, even at recorded timestamps. Samples, actual completion, contact information, and on-demand measurements remain authoritative immutable Physics values. Optional analysis failure does not invalidate a successful flight.
+
+See [the drag specification](docs/physics/drag-model.md) for tolerances, resource accounting, independent references, rounding regressions, practical performance, and limitations. The research-only Python fixture generator is optional; ordinary build and CI remain .NET-only. The CLI and gravity-only Visualizer behavior are unchanged.
 
 ## Test dependencies and reproducibility
 

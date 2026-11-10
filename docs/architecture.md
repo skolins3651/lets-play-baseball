@@ -1,10 +1,10 @@
 # Let's Play Baseball — Architecture
 
-> **Status:** Working Draft v0.6 — November 5, 2026\
+> **Status:** Working Draft v0.7 — November 9, 2026\
 > **Purpose:** Maintain the current project-wide architecture, summarize approved decisions, and connect workstreams to their detailed specifications.\
 > **Scope:** Project-wide principles (including deferred reporting and publication systems), completed Milestone 0 (setup), and active Milestone 1 (ball flight). Detailed physical equations and contracts live in the linked specialized specifications.
 
-Revision v0.6 records the approved local visualizer boundary and ephemeral debugging policy for internal milestone 5.5 ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19)); local Phase B implementation awaits independent review. Revision v0.5 adds first-contact termination, continuous evaluation, optional measurements, and actual-work budgets. Revision v0.4 records the first executable gravity-only simulator. Revision v0.3 adopted the M1 physical conventions and minimal inputs. Earlier v0.2's provisional center-field-oriented axes remain superseded.
+Revision v0.7 records Issue #6 gravity-plus-drag, shared numerical execution, model-aware provenance, and specialized drag event policies. This local Phase B implementation awaits independent implementation review before publication. Revision v0.6 recorded the local visualizer boundary and ephemeral debugging policy for internal milestone 5.5 ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19)), merged through PR #20. Revision v0.5 adds first-contact termination, continuous evaluation, optional measurements, and actual-work budgets. Revision v0.4 records the first executable gravity-only simulator. Revision v0.3 adopted the M1 physical conventions and minimal inputs. Earlier v0.2's provisional center-field-oriented axes remain superseded.
 
 ## 1. Vision
 
@@ -32,7 +32,7 @@ These are working principles subject to revision when prototypes reveal better a
 
 ### Documentation relationships
 
-This overview records project-wide responsibilities, current decisions, and planned direction. Specialized workstream specifications own detailed equations, contracts, validation rules, and extended rationale. The current physics specifications are [physical conventions and analytical fixtures](physics/conventions.md) and [gravity-only contracts](physics/gravity-only-contract.md). The [visualizer guide and application contract](visualizer.md) owns presentation, temporary ownership, and private HTTP details. Future active workstreams should be linked here in the same way.
+This overview records project-wide responsibilities, current decisions, and planned direction. Specialized workstream specifications own detailed equations, contracts, validation rules, and extended rationale. The current physics specifications are [physical conventions and analytical fixtures](physics/conventions.md), [gravity-only contracts](physics/gravity-only-contract.md), and [quadratic drag contracts and verification](physics/drag-model.md). The [visualizer guide and application contract](visualizer.md) owns presentation, temporary ownership, and private HTTP details. Future active workstreams should be linked here in the same way.
 
 When an approved specialized decision supersedes this overview, update its summary, links, and obsolete guidance together. A newer unapproved draft does not automatically override an approved decision. Preserve useful history with clear labels instead of maintaining competing current guidance.
 
@@ -70,7 +70,7 @@ The historical/scenario subsystem owns revisions and timeline provenance, analyt
 
 **Goal:** Given initial conditions and an environmental model, compute a physically grounded 3D baseball trajectory and report measurements, with controlled numerical error and documented scientific assumptions.
 
-**Current stage:** Issues #2/#3 established [physical conventions and analytical fixtures](physics/conventions.md) and validated inputs. Issue #4 adds the headless `GravityOnlySimulator`, classical RK4 with separate gravity derivatives, and immutable `TrajectorySample`/`SimulationResult` outputs with `DurationReached` completion. The [gravity-only contract](physics/gravity-only-contract.md) owns the detailed APIs, ownership, timing, resource policy, and failures. Issue #5 adds `SimulateUntilGroundContact`, immutable contact geometry, bounded numerical event refinement, and optional sample-only/gravity-specific analysis. Free flight remains unconstrained; the CLI remains a bootstrap shell. The following scope describes the full milestone, not the requirements of every individual issue.
+**Current stage:** Issues #2/#3 established [physical conventions and analytical fixtures](physics/conventions.md) and validated inputs. Issue #4 adds the headless `GravityOnlySimulator`, classical RK4 with separate gravity derivatives, and immutable `TrajectorySample`/`SimulationResult` outputs with `DurationReached` completion. The [gravity-only contract](physics/gravity-only-contract.md) owns the detailed APIs, ownership, timing, resource policy, and failures. Issue #5 adds `SimulateUntilGroundContact`, immutable contact geometry, bounded numerical event refinement, and optional sample-only/gravity-specific analysis. Issue #6 adds `GravityDragSimulator`, immutable explicit aerodynamic parameters, model-aware continuous analysis, and a shared `FlightExecution` core. The [drag specification](physics/drag-model.md) owns its full-state consistency checks, specialized contact/apex policies, references, and limits. Gravity-only certificates remain unchanged. Free flight remains unconstrained; the CLI remains a bootstrap shell. The following scope describes the full milestone, not the requirements of every individual issue.
 
 ### Minimum interactive visualizer (5.5 / Issue #19)
 
@@ -102,10 +102,10 @@ Bat-ball contact, swing generation, athlete/fielding dynamics, wall or ground bo
 - Fixed-step fourth-order Runge–Kutta (RK4) is the implemented initial baseline, with an internal time/state derivative-evaluator boundary; it is not a permanent restriction on methods. Independent analytical fixtures use declared absolute tolerances, and a manufactured nonconstant derivative verifies RK4 stages/weighting. Constant-acceleration agreement alone does not demonstrate fourth-order convergence; broader studies remain in #10.
 - Indexed simulation-time boundaries avoid accumulated timestamp drift. Free flight preserves whole-horizon preflight and exact requested-duration completion. Contact-aware flights end at first refined contact or duration, cap actual ordinary work at 100,000 steps, and use separately bounded refinement. Both permit at most 100,001 samples; immediate contact requires only one. Immutable results own their samples; unsafe arithmetic or unrepresentable progression throws rather than returning partial success. Detailed rules and limitations live in the [gravity-only contract](physics/gravity-only-contract.md).
 - Force calculations should be modular (gravity, drag, spin-dependent lift) and accept physical state and environmental conditions rather than engine objects.
-- Contact geometry is a finite, representable ground elevation plus positive ball radius. First contact and interior maxima use bounded numerical refinement through existing RK4. Results retain private immutable request provenance; continuous analysis requires explicit matching inputs. Detailed accuracy and failure policies belong in the specialized physics contract.
+- Contact geometry is a finite, representable ground elevation plus positive ball radius. First contact and interior maxima use bounded numerical refinement through existing RK4. Results retain private immutable model identity, request, applicable aerodynamic settings, contact geometry, and numerical-policy identity. Continuous analysis requires explicit matching inputs; even disabled-drag results remain drag-model results. Drag contact derives radius from its aerodynamic configuration. Detailed accuracy and failure policies belong in the specialized physics contracts.
 - Atmospheric inputs must not double-count altitude and pressure. Document how density and other properties are derived.
 
-The gravity-only equations, reference fixtures, and input validation are specified in the linked physics documents. Aerodynamic equations, empirical coefficients, environmental formulas, and additional physical constants remain later M1 work; do not assume they are settled by the gravity-only baseline.
+The linked physics specifications distinguish gravity-only certificates from drag numerical acceptance conditions. Enabled drag checks one full RK4 step against two half-steps in all six components, returns the full-step state on acceptance, and rejects unresolved calculations without adaptive integration. These observed checks and bounded event residuals are not certified global error bounds or empirical baseball accuracy. Shared execution and lookup do not assume a universal height shape; each model owns its dynamics and event reasoning. Magnus forces, environmental derivations, wind, variable coefficients, and empirical calibration remain later M1 work.
 
 ### M1 phases and exit tests
 
@@ -205,23 +205,28 @@ lets-play-baseball/
 │   ├── visualizer.md
 │   └── physics/
 │       ├── conventions.md
-│       └── gravity-only-contract.md
+│       ├── gravity-only-contract.md
+│       └── drag-model.md
 ├── .github/workflows/
 ├── README.md
 └── LPB.slnx
 ```
 
-`docs/architecture.md` is the project-wide architectural overview; keep detailed specifications in linked workstream documents and avoid duplicate current guidance. A future `research/` directory can hold supporting investigations when needed.
+`docs/architecture.md` is the project-wide architectural overview; keep detailed specifications in linked workstream documents and avoid duplicate current guidance. The `research/` directory contains the optional standard-library Python generator for independent drag verification fixtures; production builds and CI remain .NET-only.
 
 ## 8. Deferred design decisions
 
 - Scenario-specific pitched-ball conditions and alternative C2C unit/angle conventions. Basic friendly units and exact-cardinal conversion are defined for the local visualizer; the field frame and internal SI units remain unchanged.
-- Scientific source selection and empirical drag/lift coefficients; spin decay and seam effects.
+- Empirical calibration of drag/lift coefficients; spin decay and seam effects. Issue #6 documents scientific sources and illustrative deterministic inputs without claiming calibration.
 - Broader solver convergence and practical accuracy across physical models (#10), future alternative/adaptive methods, specialized arithmetic for extreme inputs. Issue #5 localization tolerances and limitations are specified in the gravity-only contract. Issue #4 establishes fixture-specific tolerances and a provisional execution limit; fixed-step RK4 is the current baseline.
 - Serialization schemas, replay granularity, and strictness of cross-platform reproducibility.
 - Later collision, biomechanics, statistical, history, and scenario interfaces.
 - Statistical-discovery query/claim schema, editorial evidence bundles, fictional organization/authorship model, publication templates and rendering, and report invalidation/versioning policies.
 - Long-term repository topology and Unity integration strategy.
+
+### Future stochastic parameter lifecycle
+
+Stochastic modeling is a future cross-cutting workstream, not an Issue #6 implementation or an assignment of the whole program to M2/M3. It may encompass distributions, correlated/hierarchical variation, latent state, stochastic processes and timescales, seeded independent streams, reproducible realizations, retention, and historical provenance. A future specialized specification should define those lifecycle responsibilities before implementation. Current physical parameters are deterministic, immutable, and explicitly replaceable; RK4 evaluations perform no draws. No RNG, generalized realization interface, or persistence infrastructure is introduced here, and no new backlog issue is created by this note.
 
 Record major decisions and their rationale in short design notes or Architecture Decision Records (ADRs) as they arise. Avoid treating provisional choices as permanent merely because they appear in this document.
 
@@ -244,4 +249,4 @@ Suggested LPB ChatGPT workspaces:
 
 **Routing reminders:** At each transition from architectural discussion to specialized physics or reporting research, suggest the corresponding chat. When a task requires local code/files, command execution, a repository edit, or PR review, suggest Codex or Work and prepare a scoped implementation prompt. When a substantial concept needs learning before implementation, suggest **Learning & Research** and return to the implementation chat with the outcome. Users need not open every suggested chat immediately.
 
-**Current next actions:** Independently review Issue #19's local Phase B visualizer implementation before separately authorizing Phase C publication and Linux/Windows CI verification. Issue #5 was merged through PR #18. Aerodynamic drag (#6), numerical studies (#10), empirical validation (#11), CLI/export (#12), broader plotting/comparison (#13), and reporting remain separate tasks; the visualizer does not complete those workstreams.
+**Current next actions:** Independently review Issue #6's local Phase B implementation before separately authorizing publication and Linux/Windows CI. Issue #5 was merged through PR #18 and the gravity-only visualizer through PR #20. A focused Trajectory Lab model-selection enhancement needs separate authorization after drag validation. Magnus (#7), atmosphere (#8), wind (#9), broader numerical studies (#10), empirical validation (#11), CLI/export (#12), and plotting/comparison (#13) remain separate tasks.
