@@ -42,9 +42,9 @@ internal static class GravityOnlyRefinement
                     new Vector3d(upper.State.Position.X, upper.State.Position.Y, height), upper.State.Velocity));
             if (evaluations == MaximumEvaluations)
                 throw new ArithmeticException($"Contact refinement exceeded {MaximumEvaluations} evaluations.");
-            var time = InteriorTime(lower.Time, upper.Time);
+            var time = NumericalEventInterval.InteriorTime(lower.Time, upper.Time);
             var trial = new TrajectorySample(time, evaluate(time));
-            ValidateState(trial.State);
+            NumericalEventInterval.ValidateState(trial.State);
             if (trial.State.Position.Z > height)
                 lower = trial;
             else if (trial.State.Velocity.Z < 0)
@@ -67,9 +67,9 @@ internal static class GravityOnlyRefinement
                 return upper;
             if (evaluations == MaximumEvaluations)
                 throw new ArithmeticException($"Apex refinement exceeded {MaximumEvaluations} evaluations.");
-            var time = InteriorTime(lower.Time, upper.Time);
+            var time = NumericalEventInterval.InteriorTime(lower.Time, upper.Time);
             var trial = new TrajectorySample(time, evaluate(time));
-            ValidateState(trial.State);
+            NumericalEventInterval.ValidateState(trial.State);
             if (trial.State.Velocity.Z > 0)
                 lower = trial;
             else
@@ -166,27 +166,12 @@ internal static class GravityOnlyRefinement
         return bound;
     }
 
-    private static double InteriorTime(double lower, double upper)
-    {
-        var time = lower + (upper - lower) / 2;
-        if (!double.IsFinite(time) || time <= lower || time >= upper)
-            throw new ArithmeticException($"Refinement has no representable interior timestamp between {lower:R} and {upper:R} s.");
-        return time;
-    }
-
     private static void ValidateInterval(TrajectorySample lower, TrajectorySample upper, double gravity)
     {
         if (!double.IsFinite(lower.Time) || lower.Time < 0 || !double.IsFinite(upper.Time) || upper.Time <= lower.Time ||
             !double.IsFinite(gravity) || gravity < 0)
             throw new ArithmeticException("Refinement requires a finite, progressing interval and nonnegative finite gravity.");
-        ValidateState(lower.State);
-        ValidateState(upper.State);
-    }
-
-    private static void ValidateState(FlightState state)
-    {
-        if (!double.IsFinite(state.Position.X) || !double.IsFinite(state.Position.Y) || !double.IsFinite(state.Position.Z) ||
-            !double.IsFinite(state.Velocity.X) || !double.IsFinite(state.Velocity.Y) || !double.IsFinite(state.Velocity.Z))
-            throw new ArithmeticException("Refinement requires finite physical states.");
+        NumericalEventInterval.ValidateState(lower.State);
+        NumericalEventInterval.ValidateState(upper.State);
     }
 }

@@ -3,11 +3,11 @@ using System.Collections.ObjectModel;
 
 namespace Lpb.Physics;
 
-/// <summary>An immutable snapshot of a successfully completed gravity-only trajectory.</summary>
+/// <summary>An immutable snapshot of a successfully completed trajectory.</summary>
 /// <remarks>Execution failures throw exceptions; they do not return partial successful results.</remarks>
 public sealed class SimulationResult
 {
-    private readonly FlightRequest? sourceRequest;
+    private readonly FlightProvenance? provenance;
 
     internal SimulationResult(TrajectorySample[] samples, double requestedDuration)
         : this(samples, requestedDuration, CompletionReason.DurationReached, null, null)
@@ -17,13 +17,19 @@ public sealed class SimulationResult
     internal SimulationResult(TrajectorySample[] samples, FlightRequest request,
         CompletionReason completionReason, GroundContactSettings? contact = null)
         : this(samples, (request ?? throw new ArgumentNullException(nameof(request))).Duration,
-            completionReason, contact, request)
+            completionReason, contact, new FlightProvenance(request, contact))
+    {
+    }
+
+    internal SimulationResult(TrajectorySample[] samples, FlightProvenance source, CompletionReason completionReason)
+        : this(samples, source.Request.Duration, completionReason, source.Contact, source)
     {
     }
 
     private SimulationResult(TrajectorySample[] samples, double requestedDuration,
-        CompletionReason completionReason, GroundContactSettings? contact, FlightRequest? request)
+        CompletionReason completionReason, GroundContactSettings? contact, FlightProvenance? source)
     {
+        var request = source?.Request;
         ArgumentNullException.ThrowIfNull(samples);
         if (!double.IsFinite(requestedDuration) || requestedDuration <= 0)
         {
@@ -86,7 +92,7 @@ public sealed class SimulationResult
 
         Samples = new SampleSnapshot(snapshot);
         CompletionReason = completionReason;
-        sourceRequest = request;
+        provenance = source;
     }
 
     /// <summary>Gets the ordered, read-only snapshot, including the initial and terminal samples.</summary>
@@ -101,15 +107,25 @@ public sealed class SimulationResult
     /// <summary>Gets the condition that completed the trajectory.</summary>
     public CompletionReason CompletionReason { get; }
 
+    /// <summary>Gets the selected physical model; null only for internal provenance-free snapshots.</summary>
+    public FlightModelKind? ModelKind => provenance?.ModelKind;
+
     internal void ValidateGravityContext(FlightRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (sourceRequest is null)
+        if (provenance?.ModelKind != FlightModelKind.GravityOnly)
             throw new ArgumentException("The result has no production gravity-model provenance.", "result");
-        if (sourceRequest.InitialState != request.InitialState ||
-            sourceRequest.GravityMagnitude != request.GravityMagnitude ||
-            sourceRequest.Duration != request.Duration || sourceRequest.TimeStep != request.TimeStep)
-            throw new ArgumentException("The request does not match the result's gravity-model inputs.", nameof(request));
+        provenance.ValidateRequest(request);
+    }
+
+    internal void ValidateDragContext(FlightRequest request, AerodynamicSettings aerodynamics)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(aerodynamics);
+        if (provenance?.ModelKind != FlightModelKind.GravityAndDrag)
+            throw new ArgumentException("The result has no production gravity-plus-drag provenance.", "result");
+        provenance.ValidateRequest(request);
+        provenance.ValidateAerodynamics(aerodynamics);
     }
 
     private sealed class SampleSnapshot(TrajectorySample[] samples)

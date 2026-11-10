@@ -83,7 +83,7 @@ Near-horizon fixtures use zero center-contact height, zero gravity, `vz0 = -1`, 
 
 ## Deferred capabilities and explicit non-decisions
 
-- Aerodynamic drag, atmosphere, wind, and lift/Magnus force are introduced incrementally in later M1 issues.
+- Issue #6 implements constant-coefficient quadratic drag in stationary air; see [its specialized contract](drag-model.md). Atmosphere derivation, wind, and lift/Magnus forces remain later M1 work.
 - Spin is an eventual 3D angular-velocity vector (rad/s) in the adopted field frame, with direction given by the ordinary right-hand rule. Its representation, persistence, evolution, and aerodynamic coupling will be specified when the spin model requires them. Initial gravity-only state and integration do not need spin.
 - Ball orientation, seam geometry, quaternions, rotational torque, seam-shifted wake, and detailed collision dynamics are deferred. Their future introduction should be supported by model and state evolution, **not** by placeholder physics fields in this first solver.
 - No assumption is made that all future moving objects (e.g., players) must use this trajectory model. Reuse mathematical components when justified.
@@ -94,4 +94,8 @@ Near-horizon fixtures use zero center-contact height, zero gravity, `vz0 = -1`, 
 - The conventions and analytical fixtures above are adopted as the provisional M1 baseline.
 - [`docs/architecture.md`](../architecture.md) summarizes the same coordinate convention; mathematical details remain here.
 - Issue #3's implemented inputs and Issue #4's executable solver/output contracts are documented in [`gravity-only-contract.md`](gravity-only-contract.md). Historical deferrals are labeled there.
-- Numerical integration and focused trajectory verification are implemented in Issue #4; contact-aware termination and optional measurements are implemented in Issue #5. Minimum useful visualization is a separate follow-up before drag; broader plotting/comparisons remain later work.
+- Numerical integration and focused trajectory verification are implemented in Issue #4; contact-aware termination and optional measurements are implemented in Issue #5. The gravity-only Trajectory Lab was merged through PR #20. Issue #6 adds headless drag; a UI model selector requires separate authorization, and broader plotting/comparisons remain later work.
+
+## Drag conventions (Issue #6)
+
+The same SI field frame and six-component state apply to both models. Drag introduces explicit immutable mass (kg), spherical radius (m), density (kg/m³), and dimensionless coefficient referenced to frontal area πR². In a drag contact scenario that radius is authoritative for both aerodynamics and center-contact geometry. Parameters remain deterministic and caller-supplied. The [drag contract](drag-model.md) owns equations, safe arithmetic, full-state numerical checks, specialized localization, independent fixtures, and scientific sources. Its observed numerical conditions do not replace the gravity-only certificates above or establish empirical accuracy.

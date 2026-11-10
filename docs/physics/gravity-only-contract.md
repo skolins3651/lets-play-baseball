@@ -7,7 +7,7 @@
 
 ## Purpose
 
-Define the implemented, engine-independent gravity-only simulator, inputs, outputs, and execution policy. Issue #3 established `Vector3d`, `FlightState`, and `FlightRequest`; Issue #4 adds executable RK4 integration and immutable trajectory results. The contracts support deliberate evolution for ground-contact events, physical object parameters, aerodynamics, and spin with first-contact termination and on-demand analysis now implemented in Issue #5. Aerodynamics and spin remain deferred.
+Define the implemented, engine-independent gravity-only simulator, inputs, outputs, and execution policy. Issue #3 established `Vector3d`, `FlightState`, and `FlightRequest`; Issue #4 adds executable RK4 integration and immutable trajectory results. The contracts support deliberate evolution for ground-contact events, physical object parameters, aerodynamics, and spin with first-contact termination and on-demand analysis now implemented in Issue #5. Issue #6 implements a separate [gravity-plus-drag model](drag-model.md) while preserving this gravity-only baseline; spin remains deferred.
 
 ## Implemented inputs (Issue #3)
 
@@ -70,7 +70,7 @@ SimulationResult
 | Scratch derivatives | Internal readonly `FlightDerivative` holds six rates, checked by the integrator | Evolve with the required physical state |
 | Numerical integration | Internal `Rk4Integrator` advances a supplied evaluator | Other methods when justified |
 | Time control | Internal `SimulationTimeGrid` performs bounded preflight and supplies indexed endpoints | Event detection and configurable sampling |
-| Trajectory control | Public static `GravityOnlySimulator` coordinates components and collects samples | Additional models when needed |
+| Trajectory control | Shared internal `FlightExecution`; `GravityOnlySimulator` supplies gravity dynamics/event policy | Shared with the separate drag model |
 | Result reporting | Public immutable samples/result and completion enum | Deliberate later contract evolution |
 | Contact refinement | Internal `GravityOnlyRefinement` | Constant-gravity bracket assumptions must be revisited for new models |
 | Optional analysis | Public `TrajectoryMeasurements` and `GravityOnlyTrajectory` | Explicit model context rather than a general registry |
@@ -87,6 +87,10 @@ The evaluator receives simulation time and state; gravity currently ignores time
 **Historical Issue #3 staging:** Its approved scope documented boundaries and deferred outputs/executable integration until their implementation in #4. Those deferrals are now fulfilled by the components above; the existing input contracts remain unchanged.
 
 Fixed-step RK4 is the initial baseline, not a permanent restriction on future methods. `Lpb.Physics` has no Unity, CLI, database, rendering, or external-service dependencies; references continue from CLI/tests **to** Physics only.
+
+### Shared infrastructure after Issue #6
+
+`FlightExecution` owns indexed progression, ordinary work/sample budgets, allocation, immediate contact, completion, exception context, and successful result construction. Its advancement/event delegates preserve specialized physical policies. `TrajectoryEvaluation` owns timestamp lookup and exact recorded-maximum comparisons. `NumericalEventInterval` contains the unchanged interior-time and finite-state checks. `Rk4Integrator`, `SimulationTimeGrid`, and the gravity uncertainty formulas and fast paths are unchanged. Drag's consistency policy and apex witness do not apply to gravity-only execution.
 
 ## Unconstrained indexed time and resource policy
 
@@ -230,9 +234,9 @@ Immediate contact bypasses preflight and ordinary integration. Sample capacity s
 
 `TrajectoryMeasurements.GetDisplacement(result)` returns final minus initial position. `GetHorizontalDisplacement(result)` returns that vector with Z zero, not scalar distance or traveled path length. Required subtractions are checked for finiteness before vector construction; failure is `ArithmeticException`. Elapsed time is `result.FinalTime`. `GetGroundContact(result)` returns the terminal `TrajectorySample?` only for `GroundContact`, otherwise null. Its time is completed flight/contact time; its position is the **ball center**, not the ground-surface point at elevation zg.
 
-Both production simulation APIs construct results retaining a private readonly reference to their immutable source request, including immediate contact and contact-aware duration completion. No dynamics object, general model, mutable metadata, or analysis cache is exposed. The compatibility two-argument internal result constructor has no provenance: sample-only measurements remain valid, but numerical context-dependent analysis rejects it.
+Both production gravity simulation APIs construct results retaining private immutable provenance: model identity, source request, applicable contact geometry, and fixed numerical-policy identity, including immediate contact and contact-aware duration completion. `SimulationResult.ModelKind` is `GravityOnly` for these APIs; the provenance-free constructor reports null. No dynamics object, general model, mutable metadata, or analysis cache is exposed. The compatibility two-argument internal result constructor has no provenance: sample-only measurements remain valid, but numerical context-dependent analysis rejects it.
 
-`GravityOnlyTrajectory.Evaluate(result, request, time)` and `GetMaximumHeight(result, request)` require explicit matching context. Compare all initial-state components, gravity, duration, and timestep exactly; an equivalent independently constructed request is accepted. Missing provenance throws `ArgumentException` naming `result`; mismatches name `request`; null inputs throw `ArgumentNullException`.
+`GravityOnlyTrajectory.Evaluate(result, request, time)` and `GetMaximumHeight(result, request)` require explicit matching gravity-only model identity and context. They reject drag-model results even when density/coefficient disables drag and the common request matches. Compare all initial-state components, gravity, duration, and timestep exactly; an equivalent independently constructed request is accepted. Missing provenance throws `ArgumentException` naming `result`; mismatches name `request`; null inputs throw `ArgumentNullException`.
 
 Evaluation permits finite time in `[0, result.FinalTime]` only (`ArgumentOutOfRangeException`, `time`). Binary-search stored timestamps: an exact match returns the recorded state verbatim, including a projected terminal contact. Otherwise perform at most one RK4 advancement from the preceding sample. Do not linearly interpolate, apply projection to interior states, or evaluate beyond actual termination. Very near contact, the unprojected interior path can have a small signed residual; the terminal adjustment is bounded as above.
 
