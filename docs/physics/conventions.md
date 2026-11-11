@@ -94,7 +94,7 @@ Near-horizon fixtures use zero center-contact height, zero gravity, `vz0 = -1`, 
 - The conventions and analytical fixtures above are adopted as the provisional M1 baseline.
 - [`docs/architecture.md`](../architecture.md) summarizes the same coordinate convention; mathematical details remain here.
 - Issue #3's implemented inputs and Issue #4's executable solver/output contracts are documented in [`gravity-only-contract.md`](gravity-only-contract.md). Historical deferrals are labeled there.
-- Numerical integration and focused trajectory verification are implemented in Issue #4; contact-aware termination and optional measurements are implemented in Issue #5. The gravity-only Trajectory Lab was merged through PR #20. Issue #6 adds headless drag; a UI model selector requires separate authorization, and broader plotting/comparisons remain later work.
+- Numerical integration and focused trajectory verification are implemented in Issue #4; contact-aware termination and optional measurements are implemented in Issue #5. The original gravity-only Trajectory Lab was merged through PR #20. Issue #6 headless drag was merged through PR #21; the approved [Lab follow-up](../visualizer.md) adds model selection using the unchanged Physics contracts. Broader plotting/comparisons remain later work.
 
 ## Drag conventions (Issue #6)
 

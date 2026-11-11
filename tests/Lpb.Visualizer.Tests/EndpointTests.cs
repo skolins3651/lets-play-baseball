@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using Lpb.Physics;
 using Lpb.Visualizer;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -56,19 +58,99 @@ public class EndpointTests
         Assert.That(response.Content.Headers.ContentType, Is.Not.Null);
     }
 
-    [Test]
-    public async Task SamplingKeepsExecutedSettingsIdentityAndTerminals()
+    [TestCase(false)] [TestCase(true)]
+    public async Task SamplingKeepsExecutedSettingsIdentityAndTerminals(bool drag)
     {
-        var first = await Run();
+        var first = await Run(drag ? Fixtures.Drag : Fixtures.Default);
         using var response = await client.PostAsJsonAsync($"/api/simulations/{first.ResultId}/display", new DisplayInput(300));
         var display = (await response.Content.ReadFromJsonAsync<ExperimentResponse>())!;
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         Assert.That(display.ResultId, Is.EqualTo(first.ResultId));
-        Assert.That(display.ExecutedScenario, Is.EqualTo(first.ExecutedScenario));
+        Assert.That(display.ExecutedScenario.Launch, Is.EqualTo(first.ExecutedScenario.Launch));
+        Assert.That(display.ExecutedScenario.ModelKind, Is.EqualTo(first.ExecutedScenario.ModelKind));
+        Assert.That(display.ExecutedScenario.Model, Is.EqualTo(first.ExecutedScenario.Model));
+        Assert.That(display.ExecutedScenario.InitialState, Is.EqualTo(first.ExecutedScenario.InitialState));
+        Assert.That(display.ExecutedScenario.GroundElevationMetres, Is.EqualTo(first.ExecutedScenario.GroundElevationMetres));
+        Assert.That(display.ExecutedScenario.BallRadiusMetres, Is.EqualTo(first.ExecutedScenario.BallRadiusMetres));
+        Assert.That(display.ExecutedScenario.Direction, Is.EqualTo(first.ExecutedScenario.Direction));
+        var a = display.ExecutedScenario.Aerodynamics;
+        var original = first.ExecutedScenario.Aerodynamics;
+        Assert.That(a?.BallMass, Is.EqualTo(original?.BallMass));
+        Assert.That(a?.BallRadius, Is.EqualTo(original?.BallRadius));
+        Assert.That(a?.AirDensity, Is.EqualTo(original?.AirDensity));
+        Assert.That(a?.DragCoefficient, Is.EqualTo(original?.DragCoefficient));
         Assert.That(display.Landmarks, Is.EqualTo(first.Landmarks));
         Assert.That(display.Measurements, Is.EqualTo(first.Measurements));
         Assert.That(display.Points, Has.Length.EqualTo(300));
         Assert.That(response.Headers.CacheControl?.NoStore, Is.True);
+    }
+
+    [Test]
+    public async Task LegacyRequestWithoutNewFieldsStillExecutesGravityOnly()
+    {
+        var body = JsonSerializer.SerializeToNode(new RunInput(Fixtures.Default, 20), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        var launch = body["launch"]!.AsObject();
+        foreach (var field in new[] { "physicalModel", "ballMassGrams", "airDensity", "dragCoefficient" }) launch.Remove(field);
+        using var response = await client.PostAsync("/api/simulations", new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"));
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var actual = (await response.Content.ReadFromJsonAsync<ExperimentResponse>())!;
+        Assert.That(actual.ExecutedScenario.ModelKind, Is.EqualTo(FlightModelKind.GravityOnly));
+        Assert.That(actual.ExecutedScenario.Aerodynamics, Is.Null);
+        Assert.That(actual.Points, Is.EqualTo(Fixtures.Run().Display(Guid.NewGuid(), 20).Points));
+    }
+
+    [TestCase("ballMassGrams")] [TestCase("airDensity")] [TestCase("dragCoefficient")]
+    public async Task MissingActiveAerodynamicsReturnsItsFieldAndPreservesPreviousResult(string field)
+    {
+        var previous = await Run();
+        var body = JsonSerializer.SerializeToNode(new RunInput(Fixtures.Drag, 20), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        body["launch"]!.AsObject().Remove(field);
+        using var failure = await client.PostAsync("/api/simulations", new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"));
+        Assert.That(failure.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+        using var error = JsonDocument.Parse(await failure.Content.ReadAsStringAsync());
+        Assert.That(error.RootElement.GetProperty("fields").EnumerateObject().Select(p => p.Name), Is.EqualTo(new[] { field }));
+        using var display = await client.PostAsJsonAsync($"/api/simulations/{previous.ResultId}/display", new DisplayInput(2));
+        Assert.That(display.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+    }
+
+    [Test]
+    public async Task InactiveNumericAerodynamicsAreExcludedButInvalidJsonTypesStillReject()
+    {
+        var actual = await Run(Fixtures.Default with { BallMassGrams = -1, AirDensity = -2, DragCoefficient = -3 });
+        Assert.That(actual.ExecutedScenario.Launch, Is.EqualTo(Fixtures.Default));
+        Assert.That(actual.ExecutedScenario.Aerodynamics, Is.Null);
+        var body = JsonSerializer.SerializeToNode(new RunInput(Fixtures.Default, 20), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        body["launch"]!["ballMassGrams"] = "invalid";
+        using var failure = await client.PostAsync("/api/simulations", new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json"));
+        Assert.That(failure.StatusCode, Is.EqualTo(HttpStatusCode.BadRequest));
+    }
+
+    [TestCase(true)] [TestCase(false)]
+    public async Task DisabledDragResponseRetainsModelAndApplicableValues(bool zeroDensity)
+    {
+        var input = Fixtures.Drag with { AirDensity = zeroDensity ? 0 : 1.225, DragCoefficient = zeroDensity ? .35 : 0 };
+        var actual = await Run(input);
+        Assert.That(actual.ExecutedScenario.ModelKind, Is.EqualTo(FlightModelKind.GravityAndDrag));
+        Assert.That(actual.ExecutedScenario.Launch, Is.EqualTo(input));
+        Assert.That(actual.ExecutedScenario.Aerodynamics!.AirDensity, Is.EqualTo(input.AirDensity));
+        Assert.That(actual.ExecutedScenario.Aerodynamics.DragCoefficient, Is.EqualTo(input.DragCoefficient));
+        Assert.That(actual.ExecutedScenario.Model, Does.Contain("drag disabled by executed settings"));
+    }
+
+    [Test]
+    public async Task RequiredDragRejectionKeepsPhysicsContextAndLastSuccessfulExperiment()
+    {
+        var previous = await Run(Fixtures.Drag);
+        using var failure = await client.PostAsJsonAsync("/api/simulations", new RunInput(Fixtures.Drag with
+        { Mode = "unconstrained", GravityMagnitude = 0, ElevationDegrees = 0, DurationSeconds = 4, TimeStepSeconds = 4 }, 20));
+        Assert.That((int)failure.StatusCode, Is.EqualTo(422));
+        Assert.That(await failure.Content.ReadAsStringAsync(), Does.Contain("Integration step 1").And.Contain("reduce timestep"));
+        using var display = await client.PostAsJsonAsync($"/api/simulations/{previous.ResultId}/display", new DisplayInput(37));
+        Assert.That(display.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        var retained = (await display.Content.ReadFromJsonAsync<ExperimentResponse>())!;
+        Assert.That(retained.ResultId, Is.EqualTo(previous.ResultId));
+        Assert.That(retained.ExecutedScenario.Launch, Is.EqualTo(previous.ExecutedScenario.Launch));
+        Assert.That(retained.Landmarks, Is.EqualTo(previous.Landmarks));
     }
 
     [Test]

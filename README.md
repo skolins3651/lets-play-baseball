@@ -2,7 +2,7 @@
 
 A modular, physics-grounded baseball simulation and management project written primarily in C#.
 
-M0 established the development foundation. M1 includes gravity-only and gravity-plus-quadratic-drag RK4, immutable results, first-ground-contact termination, and optional continuous trajectory analysis. Issue #6 is implemented locally for independent review before publication. The gravity-only Trajectory Lab ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19)) was merged through PR #20; a drag model selector remains a separate follow-up.
+M0 established the development foundation. M1 includes gravity-only and gravity-plus-quadratic-drag RK4, immutable results, first-ground-contact termination, and optional continuous trajectory analysis. Issue #6 was independently reviewed and merged through [PR #21](https://github.com/skolins3651/lets-play-baseball/pull/21). The Trajectory Lab ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19), PR #20) now supports both models through the scoped #6 follow-up; this follow-up remains local pending review and publication authorization.
 
 The [current architecture](docs/architecture.md) connects the project-wide design to the [physics conventions and analytical fixtures](docs/physics/conventions.md), [gravity-only contracts](docs/physics/gravity-only-contract.md), and [drag contracts and verification](docs/physics/drag-model.md). The authoritative simulation must remain independent of Unity, rendering, databases, and external runtime services. Future Unity integration may require retargeting, multi-targeting, or an adapter; a .NET 10 assembly is not assumed to load directly into Unity.
 
@@ -65,6 +65,8 @@ dotnet run --project src/Lpb.Visualizer/Lpb.Visualizer.csproj
 Open [http://localhost:5055](http://localhost:5055), enter launch settings, and press **Run simulation**. After a Release build, add `--configuration Release --no-build --no-restore`. Change an occupied port with `-- --port 5056`; binding remains loopback-only. Stop with Ctrl+C.
 
 Three coordinated views display the same C# numerical trajectory. Speed defaults to mph; distances to feet; radius to inches. Integration timestep and plotted-point count are separate controls. **Apply density** reuses the captured last successful run even when launch inputs have pending edits. All experiments are temporary; refresh, expiry, eviction, or shutdown can lose them. No historical saves or exports are provided.
+
+**Gravity only** remains the default, with the existing 100 mph / 30° elevation / 45° azimuth launch, 3 ft center height, 1.45 in radius, 0.01 s timestep, and 10 s limit. Select **Gravity + drag** to expose illustrative mass **145 g**, density **1.225 kg/m³**, and constant coefficient **0.35**. These are uncalibrated stationary-air assumptions without spin, lift, wind, or variable atmosphere. The single radius supplies both aerodynamic and contact geometry. Both models support contact-aware and unconstrained flight independently. Zero density/coefficient retains drag identity and settings while disabling drag numerically. Inactive aerodynamic edits are retained in the form but excluded from gravity-only execution and pending comparison.
 
 See the [visualizer guide](docs/visualizer.md) for controls, exact directions, coordinate references, numerical fallbacks, HTTP ownership, limits, and browser verification. Plotly.js 4.1.2 is bundled locally with its [license and provenance](src/Lpb.Visualizer/wwwroot/vendor/README.md); no CDN is used at runtime.
 
@@ -133,7 +135,7 @@ Enabled drag compares one full RK4 step against two half-steps in **all six comp
 
 A zero density or coefficient reuses established gravity computation and event guarantees while retaining **drag identity and complete aerodynamic provenance**. Gravity-only evaluators reject that result; drag evaluators accept equivalent matching configurations and reject mismatches, even at recorded timestamps. Samples, actual completion, contact information, and on-demand measurements remain authoritative immutable Physics values. Optional analysis failure does not invalidate a successful flight.
 
-See [the drag specification](docs/physics/drag-model.md) for tolerances, resource accounting, independent references, rounding regressions, practical performance, and limitations. The research-only Python fixture generator is optional; ordinary build and CI remain .NET-only. The CLI and gravity-only Visualizer behavior are unchanged.
+See [the drag specification](docs/physics/drag-model.md) for tolerances, resource accounting, independent references, rounding regressions, practical performance, and limitations. The research-only Python fixture generator is optional; ordinary build and CI remain .NET-only. The CLI remains unchanged. The Lab selects the matching authoritative APIs, preserves numerical diagnostics and optional-analysis fallback, and never silently changes numerical settings. [Issue #22](https://github.com/skolins3651/lets-play-baseball/issues/22) tracks the separate rounded exact-root gravity contact limitation, also inherited by disabled drag.
 
 ## Test dependencies and reproducibility
 

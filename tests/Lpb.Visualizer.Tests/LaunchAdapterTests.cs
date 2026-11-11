@@ -13,10 +13,82 @@ internal static class Fixtures
         GroundElevationFeet = 0, BallRadiusInches = 1.45, Mode = "contact"
     };
     public static Experiment Run(LaunchInput? input = null) => Experiment.Run(LaunchAdapter.Convert(input ?? Default));
+    public static LaunchInput Drag => Default with
+    {
+        PhysicalModel = "gravity-drag", BallMassGrams = 145, AirDensity = 1.225, DragCoefficient = .35
+    };
 }
 
 public class LaunchAdapterTests
 {
+    [Test]
+    public void ModelAndApplicableSiSettingsAreCapturedWithOneRadius()
+    {
+        var gravity = LaunchAdapter.Convert(Fixtures.Default);
+        var explicitGravity = LaunchAdapter.Convert(Fixtures.Default with { PhysicalModel = "gravity-only" });
+        Assert.That(gravity.Scenario.ModelKind, Is.EqualTo(FlightModelKind.GravityOnly));
+        Assert.That(gravity.Scenario.Aerodynamics, Is.Null);
+        Assert.That(gravity.Request.InitialState, Is.EqualTo(explicitGravity.Request.InitialState));
+        var drag = LaunchAdapter.Convert(Fixtures.Drag with { GroundElevationFeet = 10, BallRadiusInches = 1.5 });
+        var a = drag.Scenario.Aerodynamics!;
+        Assert.That(drag.Scenario.ModelKind, Is.EqualTo(FlightModelKind.GravityAndDrag));
+        Assert.That(a.BallMass, Is.EqualTo(.145));
+        Assert.That(a.AirDensity, Is.EqualTo(1.225));
+        Assert.That(a.DragCoefficient, Is.EqualTo(.35));
+        Assert.That(a.BallRadius, Is.EqualTo(1.5 * .0254));
+        Assert.That(a.BallRadius, Is.EqualTo(drag.Contact.BallRadius).And.EqualTo(drag.Scenario.BallRadiusMetres));
+        Assert.That(drag.Request.InitialState, Is.EqualTo(LaunchAdapter.Convert(Fixtures.Default with { GroundElevationFeet = 10, BallRadiusInches = 1.5 }).Request.InitialState));
+    }
+
+    [TestCase(null)] [TestCase("")] [TestCase("drag")]
+    public void InvalidPhysicalModelHasItsOwnFieldError(string? model)
+    {
+        var error = Assert.Throws<InputException>(() => LaunchAdapter.Convert(Fixtures.Default with { PhysicalModel = model! }));
+        Assert.That(error!.Errors.Keys, Is.EqualTo(new[] { "physicalModel" }));
+    }
+
+    [TestCase("ballMassGrams")] [TestCase("airDensity")] [TestCase("dragCoefficient")]
+    public void ApplicableAerodynamicInputsRequireValidExplicitValues(string field)
+    {
+        foreach (var value in new double?[] { null, -1, double.NaN, double.PositiveInfinity, double.NegativeInfinity })
+        {
+            var input = WithAerodynamicValue(Fixtures.Drag, field, value);
+            var error = Assert.Throws<InputException>(() => LaunchAdapter.Convert(input));
+            Assert.That(error!.Errors.Keys, Is.EqualTo(new[] { field }));
+        }
+        if (field == "ballMassGrams")
+            Assert.Throws<InputException>(() => LaunchAdapter.Convert(WithAerodynamicValue(Fixtures.Drag, field, 0)));
+        else Assert.DoesNotThrow(() => LaunchAdapter.Convert(WithAerodynamicValue(Fixtures.Drag, field, 0)));
+    }
+
+    private static LaunchInput WithAerodynamicValue(LaunchInput input, string field, double? value) => field switch
+    {
+        "ballMassGrams" => input with { BallMassGrams = value },
+        "airDensity" => input with { AirDensity = value },
+        "dragCoefficient" => input with { DragCoefficient = value },
+        _ => throw new ArgumentException(nameof(field))
+    };
+
+    [Test]
+    public void InactiveAerodynamicInputsAreIgnoredAndExcludedFromExecutedSettings()
+    {
+        var converted = LaunchAdapter.Convert(Fixtures.Default with { BallMassGrams = double.NaN, AirDensity = -1, DragCoefficient = double.PositiveInfinity });
+        Assert.That(converted.Scenario.Launch, Is.EqualTo(Fixtures.Default));
+        Assert.That(converted.Scenario.Aerodynamics, Is.Null);
+    }
+
+    [Test]
+    public void PositiveValuesLostDuringSiConversionAreRejectedByField()
+    {
+        var mass = Assert.Throws<InputException>(() => LaunchAdapter.Convert(Fixtures.Drag with { BallMassGrams = double.Epsilon }));
+        Assert.That(mass!.Errors.Keys, Is.EqualTo(new[] { "ballMassGrams" }));
+        foreach (var input in new[] { Fixtures.Default, Fixtures.Drag })
+        {
+            var radius = Assert.Throws<InputException>(() => LaunchAdapter.Convert(input with { BallRadiusInches = double.Epsilon }));
+            Assert.That(radius!.Errors.Keys, Is.EqualTo(new[] { "ballRadiusInches" }));
+        }
+    }
+
     [Test]
     public void FriendlyUnitsAndGroundRelativeCenterMapToSi()
     {

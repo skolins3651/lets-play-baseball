@@ -14,8 +14,10 @@ h2 { font-size: 15px; margin: 0; letter-spacing: -.015em; } h3 { font-size: 12px
 .help, small, .footnote { color: var(--muted); font-size: 11px; line-height: 1.6; } .help { margin: 12px 0 18px; } small { display: block; margin-top: 6px; font-weight: 400; }
 .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px 12px; } .wide { grid-column: 1 / -1; }
 label { font-size: 12px; font-weight: 600; display: block; } label > span { font-weight: 400; color: var(--muted); float: right; }
+fieldset { margin: 24px 0 0; padding: 14px 0 0; border: 0; border-top: 1px solid var(--line); min-width: 0; }
+legend { padding: 0 8px 0 0; font-size: 12px; font-weight: 650; color: var(--teal); }
 input, select { font: inherit; color: var(--ink); width: 100%; padding: 9px 10px; border: 1px solid #bcc9c5; background: white; border-radius: 5px; margin-top: 5px; min-width: 0; }
-input:focus, select:focus { outline: 2px solid #4caaa4; outline-offset: 1px; } input[aria-invalid="true"] { border-color: #b84135; }
+input:focus, select:focus { outline: 2px solid #4caaa4; outline-offset: 1px; } input[aria-invalid="true"], select[aria-invalid="true"] { border-color: #b84135; }
 button { border: 0; background: var(--teal); color: white; font: inherit; font-size: 13px; font-weight: 650; border-radius: 5px; padding: 11px 14px; cursor: pointer; width: 100%; } button span { float: right; }
 button:hover { background: #0a5654; } button:disabled { cursor: default; opacity: .45; } .secondary { background: #e6eeea; color: var(--teal); border: 1px solid #c1d4cc; margin-top: 10px; } .secondary:hover { background: #d5e6df; }
 .density { margin-top: 24px; border-top: 1px solid var(--line); } .density .help { margin-bottom: 0; }
