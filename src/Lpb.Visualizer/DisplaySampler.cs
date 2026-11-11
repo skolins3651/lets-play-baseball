@@ -21,7 +21,7 @@ internal static class DisplaySampler
             throw new InputException(new() { ["displayPointCount"] = "Display count must be an integer from 2 to 2,000." });
     }
 
-    public static DisplayPath Sample(SimulationResult result, FlightRequest request, int count)
+    public static DisplayPath Sample(SimulationResult result, FlightRequest request, int count, AerodynamicSettings? aerodynamics = null)
     {
         ValidateCount(count);
         var warnings = new List<string>();
@@ -33,7 +33,12 @@ internal static class DisplaySampler
             var points = new List<PlotPoint>(count) { PlotPoint.From(result.Samples[0]) };
             foreach (var time in Times(result.FinalTime, count).Skip(1).SkipLast(1))
             {
-                var state = GravityOnlyTrajectory.Evaluate(result, request, time);
+                var state = result.ModelKind switch
+                {
+                    FlightModelKind.GravityOnly when aerodynamics is null => GravityOnlyTrajectory.Evaluate(result, request, time),
+                    FlightModelKind.GravityAndDrag when aerodynamics is not null => GravityDragTrajectory.Evaluate(result, request, aerodynamics, time),
+                    _ => throw new ArgumentException("Result and display model context disagree.", nameof(result))
+                };
                 points.Add(PlotPoint.From(new TrajectorySample(time, state)));
             }
             points.Add(PlotPoint.From(result.Samples[^1]));

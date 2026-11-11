@@ -10,13 +10,14 @@
     <script defer src="app.js"></script>
 </head>
 <body>
-    <header class="masthead"><div><p class="eyebrow">LET’S PLAY BASEBALL / M1 · 5.5</p><h1>Trajectory lab<span>Gravity only</span></h1></div><p class="privacy">Local experiments<br><strong>Temporary · no history saved</strong></p></header>
+    <header class="masthead"><div><p class="eyebrow">LET’S PLAY BASEBALL / M1 · 5.5</p><h1>Trajectory lab<span>Gravity / drag</span></h1></div><p class="privacy">Local experiments<br><strong>Temporary · no history saved</strong></p></header>
     <main class="workspace">
         <aside class="controls">
             <form id="launch-form">
                 <div class="section-title"><h2>Launch conditions</h2><span class="pill" id="pending" aria-live="polite">Not run</span></div>
-                <p class="help">Ball-center motion under constant gravity. No drag, wind, spin, bounce, or baseball-rule decisions.</p>
+                <p class="help">Ball-center motion under constant gravity, with optional quadratic drag in stationary air. No spin, lift, wind, variable atmosphere, bounce, or baseball-rule decisions.</p>
                 <div class="input-grid">
+                    <label class="wide">Physical model<select name="physicalModel"><option value="gravity-only">Gravity only</option><option value="gravity-drag">Gravity + drag</option></select></label>
                     <label>Launch speed <span>mph</span><input name="speedMph" type="number" min="0" step="any" value="100" required></label>
                     <label>Elevation <span>degrees</span><input name="elevationDegrees" type="number" min="-90" max="90" step="any" value="30" required></label>
                     <label class="wide">Field azimuth <span>degrees</span><input name="fieldAzimuthDegrees" type="number" min="-180" max="180" step="any" value="45" required><small>0° → first base / +X · 45° → center · 90° → third base / +Y. Negative directions are allowed.</small></label>
@@ -25,6 +26,16 @@
                     <label>Ball radius <span>in</span><input name="ballRadiusInches" type="number" min="0" step="any" value="1.45" required></label>
                     <label class="wide">Flight mode<select name="mode"><option value="contact">Stop at first ground contact</option><option value="unconstrained">Unconstrained — ignore ground contact</option></select><small>Contact is the ball center reaching ground elevation plus radius. Unconstrained flight can continue below ground.</small></label>
                 </div>
+                <fieldset id="aerodynamics" hidden disabled>
+                    <legend>Illustrative aerodynamics</legend>
+                    <div class="input-grid">
+                        <label>Ball mass <span>g</span><input name="ballMassGrams" type="number" min="0" step="any" value="145" required></label>
+                        <label>Air density <span>kg/m³</span><input name="airDensity" type="number" min="0" step="any" value="1.225" required></label>
+                        <label class="wide">Drag coefficient <span>dimensionless</span><input name="dragCoefficient" type="number" min="0" step="any" value="0.35" required></label>
+                    </div>
+                    <p class="help">Illustrative, uncalibrated parameters. Constant coefficient; the radius above also sets aerodynamic area. Zero density or coefficient disables drag while retaining the selected model. Values stay here when switching models.</p>
+                    <p class="help">Consistency or damping rejection may call for a smaller timestep. Precision, range, and step-budget failures require addressing the reported constraint; no settings are adjusted automatically.</p>
+                </fieldset>
                 <h3>Numerical integration</h3>
                 <div class="input-grid">
                     <label class="wide">Gravity magnitude <span>m/s²</span><input name="gravityMagnitude" type="number" min="0" step="any" value="9.80665" required></label>

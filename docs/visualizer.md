@@ -1,6 +1,6 @@
 # Minimum interactive trajectory visualizer
 
-Internal milestone **5.5**, tracked by [Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19), is a local scientific debugger between ground-contact implementation and drag. It consumes the unchanged [gravity-only Physics APIs](physics/gravity-only-contract.md). It is not a game renderer, historical viewer, export format, or comparison workbench.
+Internal milestone **5.5**, originally tracked by [Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19) and merged through PR #20, established this local scientific debugger. The scoped follow-up to [Issue #6](https://github.com/skolins3651/lets-play-baseball/issues/6) adds gravity-plus-drag experiments using the existing [gravity-only](physics/gravity-only-contract.md) and [drag](physics/drag-model.md) Physics APIs. It introduces no new milestone, historical viewer, export format, or comparison workbench.
 
 ## Start and use
 
@@ -16,23 +16,33 @@ Open [http://localhost:5055](http://localhost:5055). Use `-- --port 5056` if the
 
 **Apply density** changes only plotted-point count, using the last successful result's immutable request and captured settings. It never applies pending physical inputs or reruns a lost result. Expired/evicted/replaced results require an explicit Run. Loading, response, and error updates are guarded by operation sequence and active result ID so old responses cannot replace a newer display.
 
+Physical model and termination mode are independent. Aerodynamic controls appear only for **Gravity + drag**. Switching models retains their entered values in the page, but inactive values are excluded from requests, validation, pending-state comparison, and executed settings. Switching back restores those values, including incomplete edits. Reverting the model and its applicable inputs clears pending state. Density changes remain available despite invalid pending physical edits; the captured result supplies its own model, request, and aerodynamic settings.
+
 ## Inputs and scientific meaning
 
 | Input | Default | Accepted meaning |
 | --- | --- | --- |
+| Physical model | Gravity only | Gravity only or gravity + drag |
 | Speed | 100 mph | Finite, nonnegative magnitude |
 | Elevation | 30° | −90° to +90°, including downward and vertical launches |
 | Field azimuth | 45° | −180° to +180°; not restricted to fair territory |
 | Initial center height | 3 ft | Ball center above local ground; signed values permitted without contact |
 | Ground elevation | 0 ft | Field-coordinate ground Z |
 | Radius | 1.45 in | Finite, positive spherical-ball radius |
+| Ball mass (drag only) | 145 g | Finite and positive |
+| Air density (drag only) | 1.225 kg/m³ | Finite and nonnegative |
+| Drag coefficient (drag only) | 0.35 | Finite, nonnegative, dimensionless |
 | Gravity | 9.80665 m/s² | Finite, nonnegative magnitude acting along −Z |
 | Timestep | 0.01 s | Finite and positive; may exceed duration |
 | Duration limit | 10 s | Finite and positive |
 | Mode | Contact-aware | Stop at first contact or run unconstrained to duration |
 | Display points | 300 | Integer 2–2,000, including both path endpoints |
 
-C# converts mph with `0.44704`, feet with `0.3048`, and inches with `0.0254`. Position is `(0, 0, groundElevation + centerHeightAboveGround)` in metres. Radius is **not added again**. Gravity and time are already SI. No invalid value is silently clamped; existing representability, resource, and contact validation still apply. Extremely small radii absorbed by ground-elevation addition are rejected.
+C# converts mph with `0.44704`, feet with `0.3048`, inches with `0.0254`, and grams by dividing by `1000`. A single converted radius supplies aerodynamic settings and contact/presentation geometry. Position is `(0, 0, groundElevation + centerHeightAboveGround)` in metres. Radius is **not added again**. Gravity, density, coefficient, and time are already SI. Raw and converted applicable inputs must be valid; positive mass/radius conversions lost to zero are rejected. No invalid value is silently clamped; existing representability, resource, and geometry validation still apply, including in unconstrained mode. Extremely small radii absorbed by ground-elevation addition are rejected.
+
+The aerodynamic defaults are illustrative and uncalibrated. The drag model assumes constant mass, spherical radius, density, and coefficient in stationary air, without spin, lift, wind, or variable atmosphere. Zero density or zero coefficient delegates numerically to gravity while retaining **GravityAndDrag** identity and all applicable parameters. Such a result is labeled **drag disabled by executed settings** and always uses drag-model analysis. This is independent of unconstrained mode's **ground contact disabled** label.
+
+With the unchanged default launch and timestep, local macOS verification produced drag contact at approximately **3.947666182518006 s**, maximum center height **19.733622375905163 m** above ground, and 300 numerically evaluated display points without warnings. Default unconstrained drag reached 10 s with the same interval maximum. These are representative observations, not portable bitwise or empirical accuracy guarantees.
 
 The right-handed field frame is +X toward first base/right field, +Y toward third base/left field, +Z upward. Field azimuth 0° is +X, 45° is ideal center field, and 90° is +Y. It is not a batter-relative spray angle and makes no fair/foul ruling.
 
@@ -64,7 +74,7 @@ Nonzero-ground acceptance: ground **10 ft**, initial center **3 ft**, radius **1
 
 ## Integration versus plotted points
 
-The simulator runs once and records its own ordinary integration samples. Display count is separate. For positive actual duration, candidate display times are `FinalTime * (i / (N-1))` with double division; endpoints are exactly zero and final time. Rounded duplicate or non-interior timestamps are skipped. Interior states use `GravityOnlyTrajectory.Evaluate(result, originalRequest, time)`. Immediate contact produces one point regardless of requested density.
+The simulator runs once and records its own ordinary integration samples. Display count is separate. For positive actual duration, candidate display times are `FinalTime * (i / (N-1))` with double division; endpoints are exactly zero and final time. Rounded duplicate or non-interior timestamps are skipped. Interior states use `GravityOnlyTrajectory.Evaluate(result, originalRequest, time)` or `GravityDragTrajectory.Evaluate(result, originalRequest, originalAerodynamics, time)` according to the executed result's model identity. Maximum analysis follows the same dispatch, including disabled drag. Immediate contact produces one point regardless of requested density.
 
 If supplementary evaluation cannot safely perform RK4, the display discards that attempted path and uses a bounded, deterministic index-spaced subset of existing recorded samples, including endpoints. The warning retains numerical context. No interpolation conceals a failure. Original samples and terminal states never change. A failed maximum query leaves its value/marker unavailable, without substituting a purported exact sampled apex.
 
@@ -78,6 +88,10 @@ This does not rerun or improve the authoritative simulation. Numerical solution 
 
 Measurements use public Physics APIs separately from rendering: actual elapsed/requested time, completion reason, maximum/time, displacement vector, horizontal displacement vector/magnitude, terminal XYZ, and genuine contact/time. Horizontal displacement is final minus initial XY, not path length. Scalar magnitude uses scaling to avoid intermediate squared-value overflow. Optional extrema, measurements, or display-unit/plot-range failures produce limitations while preserving successful simulation data. An unavailable measurement is not zero.
 
+Required integration, event-localization, and resource failures return no successful partial experiment and preserve the previous run. Physics diagnostics retain component/step/time context. Consistency and damping checks may suggest reducing the timestep; coordinate precision, arithmetic range, and step-budget failures require addressing their specific constraint. The Lab does not adapt timesteps, relax tolerances, retry simulations, or manufacture measurements.
+
+[Issue #22](https://github.com/skolins3651/lets-play-baseball/issues/22) records a preexisting rounded exact-root gravity contact limitation, inherited by disabled-drag delegation. This enhancement neither corrects nor conceals it; its separately reviewed Physics fix remains outside Lab scope.
+
 One latest successful experiment is owned by each page's unpredictable UUID tab key, kept only in JavaScript memory. The process retains at most four immutable experiments, expires them after 15 minutes of idle time, checks expiry on lookup, and sweeps once per minute. Successful display access refreshes idle time. A fifth experiment evicts the least recently accessed owner. Successful new runs atomically replace that tab's previous result; failed runs preserve it. Only one simulation/display/deletion operation executes process-wide; busy requests are rejected without queuing.
 
 Physics bounds each result to 100,001 samples, approximately 5.6 MB of sample values; four results retain about 22.4 MB plus metadata. Temporary integration arrays, plotting responses, and browser/WebGL buffers require additional working memory. Display payloads contain at most 2,000 path points plus separate landmarks. Page exit attempts deletion, but expiration is authoritative. Refresh/duplicate tabs obtain fresh owners; shutdown clears retained references and stops cleanup.
@@ -86,24 +100,26 @@ There is no scenario database, automatic file saving, browser application storag
 
 ### Application-private HTTP boundary
 
-- `POST /api/simulations`: `{ "launch": { ...all named UI launch values... }, "displayPointCount": 300 }`.
+- `POST /api/simulations`: `{ "launch": { ...applicable UI launch values... }, "displayPointCount": 300 }`.
 - `POST /api/simulations/{opaqueId}/display`: `{ "displayPointCount": 300 }`.
 - `DELETE /api/simulations/{opaqueId}`: `{}`. It deletes only that owned result; an old ID cannot delete a replacement.
 
 All three require `application/json`, optional UTF-8 charset, a body no larger than 16 KiB, and exactly one `X-Lpb-Tab-Id`: a nonempty 36-character hyphenated UUID. Valid UUIDs are compared by parsed value. Results require both owner and opaque ID. Requests stay same-origin, with loopback Host filtering and no CORS policy. Explicit foreign/opaque Origins are rejected; absent Origin permits local test clients. Kestrel explicitly replaces inherited endpoint configuration and listens only on localhost. `--port` changes only its numeric port.
 
-Responses contain captured settings/effective SI state, points, landmarks, counts, measurements, completion, and warnings. They are not a public versioned export schema. Status categories: **400** input/protocol validation, **403** foreign Origin, **404** unavailable/unowned result, **413** body limit, **415** media type/encoding, **422** authoritative simulation failure/budget rejection, **429** busy, and **500** unexpected application error. Successful simulation plus optional limitations is **200**, not false failure or partial Physics success.
+`launch.physicalModel` accepts `gravity-only` and `gravity-drag`; omission defaults to gravity-only for existing clients. Explicit null or unknown models reject. Drag requires numeric `ballMassGrams`, `airDensity`, and `dragCoefficient`, including when drag is disabled; missing/null values produce field-specific errors. Gravity-only ignores inactive numeric aerodynamic values and captures them as null. Malformed JSON and wrong JSON types still reject before applicability validation.
+
+Responses contain captured settings/effective SI state, named `modelKind` (`GravityOnly` or `GravityAndDrag`), applicable SI `aerodynamics` (null for gravity-only), points, landmarks, counts, measurements, completion, and warnings. They are not a public versioned export schema. Status categories: **400** input/protocol validation, **403** foreign Origin, **404** unavailable/unowned result, **413** body limit, **415** media type/encoding, **422** authoritative simulation failure/budget rejection, **429** busy, and **500** unexpected application error. Unexpected model/provenance mismatches remain application errors. Successful simulation plus optional limitations is **200**, not false failure or partial Physics success.
 
 ## Verification
 
-The normal solution-wide locked restore, Release build, NUnit test, and CLI smoke commands include both test projects. Visualizer tests exercise conversions, cardinal/near-cardinal inputs, both modes, contact semantics, numerical fallback, optional analysis, immutable results, large source arrays, request limits, HTTP protocol, tab isolation, expiry, LRU, and stale deletion. All 313 Physics tests remain unchanged. NUnit/VSTest and integration-test packages are test-only; no additional runtime package or browser-test framework is required.
+The normal solution-wide locked restore, Release build, NUnit test, and CLI smoke commands include both test projects. Visualizer tests exercise conversions, cardinal/near-cardinal inputs, both models and modes, aerodynamic applicability, disabled-drag provenance, captured resampling, contact semantics, numerical fallback, optional analysis, immutable results, large source arrays, request limits, HTTP protocol, tab isolation, expiry, LRU, and stale deletion. The published #6 baseline has 468 Physics and 82 Visualizer tests; all Physics tests and existing regression meanings/tolerances remain intact. NUnit/VSTest and integration-test packages are test-only; no additional runtime package or browser-test framework is required.
 
-The separate browser-native state harness is `tests/Lpb.Visualizer.Tests/browser/state-tests.html`. Open that local HTML file in a normal browser; it loads the actual application helper through classic scripts, executes eight assertions, and displays results without network requests or scenario storage. It is outside `wwwroot` and is not published with the application. Its assertions cover pending/reverted edits, captured-request resampling, failure preservation, edits during a run, out-of-order responses, stale IDs/errors, and unavailable-cache recovery. Restricted browsers that disallow local files cannot run this page; report that separately rather than treating backend tests as browser verification.
+The separate browser-native state harness is `tests/Lpb.Visualizer.Tests/browser/state-tests.html`. Open that local HTML file in a normal browser; it loads the actual application helper through classic scripts, executes eleven test scenarios, and displays results without network requests or scenario storage. It is outside `wwwroot` and is not published with the application. Its assertions cover pending/reverted edits, aerodynamic applicability/request projection, model switching, captured-request resampling, failure preservation, edits during a run, out-of-order responses, stale IDs/errors, and unavailable-cache recovery. Restricted browsers that disallow local files cannot run this page; report that separately rather than treating backend tests as browser verification.
 
-Manual macOS/Windows checks should run the default scenario, the nonzero-ground acceptance case, exact vertical and immediate contact, short duration, unconstrained below-ground flight, density changes with pending inputs, failure preservation, multiple tabs, numerical limitations, and all three Plotly views/hover labels. Check that no sharing/export controls or runtime external resources appear. Windows manual checks and GitHub Linux/Windows CI are separate from local macOS results.
+Manual macOS/Windows checks should run both models in both termination modes, both disabled-drag settings, the nonzero-ground acceptance case, exact vertical and immediate contact, short duration, unconstrained below-ground flight, density changes with pending/invalid model or aerodynamic inputs, reversions, failure preservation, multiple tabs, numerical limitations, and all three Plotly views/hover labels. Check that no sharing/export controls or runtime external resources appear. Windows manual checks and GitHub Linux/Windows CI are separate from local macOS results. For remote Mac acceptance, use Rider's graphical rebuild/tests/run interfaces and the Mac loopback browser; retain genuine PNG evidence and a tested-source fingerprint outside the repository. Record runner/configuration limitations and never substitute baseline evidence for the changed implementation.
 
 ## Deferred work
 
-The positional plot payload is model-neutral, but there is no general model-selection system. Future analytical references must be separate labeled datasets; future comparisons must distinguish numerical error from physical/empirical accuracy. A historical viewer may reuse rendering only through a separately authorized historical-data subsystem and persistence rules.
+The positional plot payload is model-neutral; model dispatch is deliberately limited to these two Physics models. Future analytical references must be separate labeled datasets; future comparisons must distinguish numerical error from physical/empirical accuracy. A historical viewer may reuse rendering only through a separately authorized historical-data subsystem and persistence rules.
 
-C2C may later change units (Type A) or angle/interpretive conventions (Type B), with batter-relative pull/opposite-field directions requiring handedness. Such presentation changes must not alter authoritative states. No C2C framework, analytical solver, model overlays, comparison storage, or historical subsystem is implemented here. Issues #6 and #10–13 retain drag, numerical verification, empirical validation, CLI/versioned exports, and broader plotting/comparison responsibilities.
+C2C may later change units (Type A) or angle/interpretive conventions (Type B), with batter-relative pull/opposite-field directions requiring handedness. Such presentation changes must not alter authoritative states. No C2C framework, analytical solver, model overlays, comparison storage, or historical subsystem is implemented here. Issues #7–13 retain further physics, numerical verification, empirical validation, CLI/versioned exports, and broader plotting/comparison responsibilities. The anticipated next sequence is the separately reviewed #22 correctness fix, then Magnus (#7).

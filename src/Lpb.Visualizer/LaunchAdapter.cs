@@ -1,4 +1,5 @@
 using Lpb.Physics;
+using System.Text.Json.Serialization;
 
 namespace Lpb.Visualizer;
 
@@ -15,13 +16,19 @@ internal sealed record LaunchInput
     public required double GroundElevationFeet { get; init; }
     public required double BallRadiusInches { get; init; }
     public required string Mode { get; init; }
+    public string PhysicalModel { get; init; } = "gravity-only";
+    public double? BallMassGrams { get; init; }
+    public double? AirDensity { get; init; }
+    public double? DragCoefficient { get; init; }
 }
 
 internal sealed record RunInput(LaunchInput Launch, int DisplayPointCount);
 internal sealed record DisplayInput(int DisplayPointCount);
 internal sealed record Direction(double X, double Y);
 internal sealed record ExecutedScenario(LaunchInput Launch, string Model, FlightState InitialState,
-    double GroundElevationMetres, double BallRadiusMetres, Direction Direction);
+    double GroundElevationMetres, double BallRadiusMetres, Direction Direction,
+    [property: JsonConverter(typeof(JsonStringEnumConverter<FlightModelKind>))] FlightModelKind ModelKind,
+    AerodynamicSettings? Aerodynamics);
 internal sealed record AdaptedLaunch(FlightRequest Request, GroundContactSettings Contact, ExecutedScenario Scenario);
 
 internal sealed class InputException(Dictionary<string, string> errors) : Exception("Check the highlighted inputs.")
@@ -54,11 +61,31 @@ internal static class LaunchAdapter
         Check("groundElevationFeet", input.GroundElevationFeet, true, "Ground elevation must be finite (ft).");
         Check("ballRadiusInches", input.BallRadiusInches, input.BallRadiusInches > 0, "Radius must be finite and positive (in).");
         if (input.Mode is not ("contact" or "unconstrained")) errors["mode"] = "Choose contact or unconstrained flight.";
+        if (input.PhysicalModel is not ("gravity-only" or "gravity-drag"))
+            errors["physicalModel"] = "Choose gravity only or gravity plus drag.";
+        var drag = input.PhysicalModel == "gravity-drag";
+        if (drag)
+        {
+            Check("ballMassGrams", input.BallMassGrams ?? double.NaN, input.BallMassGrams > 0, "Mass must be finite and positive (g).");
+            Check("airDensity", input.AirDensity ?? double.NaN, input.AirDensity >= 0, "Air density must be finite and nonnegative (kg/m³).");
+            Check("dragCoefficient", input.DragCoefficient ?? double.NaN, input.DragCoefficient >= 0, "Drag coefficient must be finite and nonnegative.");
+        }
         if (errors.Count > 0) throw new InputException(errors);
 
         var speed = input.SpeedMph * MetresPerSecondPerMph;
         var ground = input.GroundElevationFeet * MetresPerFoot;
         var radius = input.BallRadiusInches * MetresPerInch;
+        if (!double.IsFinite(radius) || radius <= 0)
+            throw new InputException(new() { ["ballRadiusInches"] = "Radius cannot be represented as a finite positive SI length." });
+        AerodynamicSettings? aerodynamics = null;
+        if (drag)
+        {
+            var mass = input.BallMassGrams!.Value / 1000;
+            if (!double.IsFinite(mass) || mass <= 0)
+                throw new InputException(new() { ["ballMassGrams"] = "Mass cannot be represented as a finite positive SI mass." });
+            aerodynamics = new AerodynamicSettings(mass, radius, input.AirDensity!.Value, input.DragCoefficient!.Value);
+        }
+        else input = input with { BallMassGrams = null, AirDensity = null, DragCoefficient = null };
         GroundContactSettings contact;
         try { contact = new GroundContactSettings(ground, radius); }
         catch (ArgumentException exception)
@@ -77,7 +104,11 @@ internal static class LaunchAdapter
                 sinElevation == 0 ? 0 : speed * sinElevation);
         var state = new FlightState(new Vector3d(0, 0, z), velocity);
         var request = new FlightRequest(state, input.GravityMagnitude, input.DurationSeconds, input.TimeStepSeconds);
-        return new(request, contact, new(input, "Gravity-only · RK4", state, ground, radius, new(cosAzimuth, sinAzimuth)));
+        var model = drag ? "Gravity + drag · RK4" : "Gravity-only · RK4";
+        if (drag && (aerodynamics!.AirDensity == 0 || aerodynamics.DragCoefficient == 0))
+            model += " · drag disabled by executed settings";
+        return new(request, contact, new(input, model, state, ground, radius, new(cosAzimuth, sinAzimuth),
+            drag ? FlightModelKind.GravityAndDrag : FlightModelKind.GravityOnly, aerodynamics));
     }
 
     // Only exact degree values receive exact mathematical pairs. Never threshold nearby inputs.

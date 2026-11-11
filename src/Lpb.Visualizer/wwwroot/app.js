@@ -6,13 +6,21 @@
     const density = document.querySelector("#display-count");
     const runButton = document.querySelector("#run");
     const displayButton = document.querySelector("#resample");
+    const aerodynamicControls = document.querySelector("#aerodynamics");
     const ft = 0.3048;
     let busy = false;
     const number = value => Number.isFinite(value)
         ? (value !== 0 && (Math.abs(value) < 0.0001 || Math.abs(value) >= 1e7) ? value.toExponential(5) : value.toLocaleString("en-US", { maximumFractionDigits: 5 }))
         : "Unavailable";
     function readLaunch() {
-        return Object.fromEntries([...form.elements].filter(el => el.name).map(el => [el.name, el.type === "number" ? el.valueAsNumber : el.value]));
+        return LpbState.applicableLaunch(Object.fromEntries([...form.elements].filter(el => el.name)
+            .map(el => [el.name, el.type === "number" ? el.valueAsNumber : el.value])));
+    }
+    function updateModelControls() {
+        const drag = form.elements.physicalModel.value === "gravity-drag";
+        aerodynamicControls.hidden = !drag;
+        aerodynamicControls.disabled = !drag;
+        if (!drag) for (const el of aerodynamicControls.elements) el.removeAttribute("aria-invalid");
     }
     function pending() {
         const label = document.querySelector("#pending");
@@ -52,6 +60,8 @@
         document.querySelector("#run-label").textContent = state.failedRun || state.unavailable ? "Last successful run" : "Executed scenario";
         document.querySelector("#mode-label").textContent = c.mode === "contact" ? "Contact-aware flight" : "Unconstrained · ground contact disabled";
         document.querySelector("#captured").textContent = `${r.executedScenario.model} · ${number(c.speedMph)} mph · elevation ${number(c.elevationDegrees)}° · field azimuth ${number(c.fieldAzimuthDegrees)}° · initial center ${number(c.centerHeightFeet)} ft above ground · ground Z ${number(c.groundElevationFeet)} ft · radius ${number(c.ballRadiusInches)} in · gravity ${number(c.gravityMagnitude)} m/s² · dt ${number(c.timeStepSeconds)} s · requested ${number(c.durationSeconds)} s`;
+        if (r.executedScenario.modelKind === "GravityAndDrag")
+            document.querySelector("#captured").append(document.createTextNode(` · mass ${number(c.ballMassGrams)} g · air density ${number(c.airDensity)} kg/m³ · drag coefficient ${number(c.dragCoefficient)} (illustrative)`));
         const m = r.measurements, maximum = r.landmarks.maximum;
         document.querySelector("#metrics").replaceChildren(
             metric(r.completionReason === "GroundContact" ? "Ground contact — ball center" : "Duration-limited terminal", `${number(r.actualElapsedSeconds)} s`, `Requested ${number(r.requestedDurationSeconds)} s`),
@@ -69,6 +79,12 @@
         if (busy) return;
         if ((kind === "run" && !form.reportValidity()) || !density.reportValidity()) return;
         const launch = readLaunch();
+        if (kind === "run") {
+            const invalid = Object.fromEntries(Object.entries(launch)
+                .filter(([, value]) => typeof value === "number" && !Number.isFinite(value))
+                .map(([name]) => [name, "Enter a finite numeric value."]));
+            if (Object.keys(invalid).length) { error("Check the highlighted inputs.", invalid); return; }
+        }
         const ticket = state.begin(kind);
         const resultId = ticket.resultId;
         busy = true; error(null); pending();
@@ -183,10 +199,11 @@
         });
     }
     form.addEventListener("submit", event => { event.preventDefault(); execute("run"); });
-    form.addEventListener("input", event => { event.target.removeAttribute("aria-invalid"); pending(); });
+    form.addEventListener("input", event => { event.target.removeAttribute("aria-invalid"); updateModelControls(); pending(); });
     displayButton.addEventListener("click", () => execute("display"));
     window.addEventListener("pagehide", () => {
         if (state.active) fetch(`/api/simulations/${state.active.resultId}`, { method: "DELETE", headers: { "Content-Type": "application/json", "X-Lpb-Tab-Id": tabId }, body: "{}", keepalive: true }).catch(() => {});
     });
+    updateModelControls();
     pending();
 })();

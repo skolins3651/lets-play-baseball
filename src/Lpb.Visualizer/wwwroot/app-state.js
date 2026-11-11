@@ -1,5 +1,14 @@
 (function (root) {
     "use strict";
+    const commonFields = ["physicalModel", "mode", "speedMph", "elevationDegrees", "fieldAzimuthDegrees",
+        "centerHeightFeet", "groundElevationFeet", "ballRadiusInches", "gravityMagnitude", "timeStepSeconds", "durationSeconds"];
+    const aerodynamicFields = ["ballMassGrams", "airDensity", "dragCoefficient"];
+    function launchFields(model) {
+        return model === "gravity-drag" ? commonFields.concat(aerodynamicFields) : commonFields;
+    }
+    function applicableLaunch(values) {
+        return Object.fromEntries(launchFields(values.physicalModel).map(key => [key, values[key]]));
+    }
     class ExperimentState {
         constructor() {
             this.sequence = 0;
@@ -30,11 +39,11 @@
         pending(form) {
             if (!this.active) return false;
             const captured = this.active.executedScenario.launch;
-            return Object.keys(captured).some(key =>
+            return launchFields(captured.physicalModel).some(key =>
                 typeof captured[key] === "number"
                     ? !Number.isFinite(form[key]) || form[key] !== captured[key]
                     : form[key] !== captured[key]);
         }
     }
-    root.LpbState = { ExperimentState };
+    root.LpbState = { ExperimentState, launchFields, applicableLaunch };
 })(globalThis);

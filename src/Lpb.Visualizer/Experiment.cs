@@ -23,16 +23,24 @@ internal sealed class Experiment
 
     public static Experiment Run(AdaptedLaunch launch)
     {
+        var contact = launch.Scenario.Launch.Mode == "contact";
+        // Identify penetration structurally before invoking either simulator. Other argument
+        // failures (notably mismatched model context) must remain application errors.
+        if (contact && launch.Request.InitialState.Position.Z < launch.Contact.GroundElevation + launch.Contact.BallRadius)
+            throw new InputException(new() { ["centerHeightFeet"] = "Initial penetration below the ball-center contact plane is unsupported." });
         SimulationResult result;
         try
         {
-            result = launch.Scenario.Launch.Mode == "contact"
-                ? GravityOnlySimulator.SimulateUntilGroundContact(launch.Request, launch.Contact)
-                : GravityOnlySimulator.Simulate(launch.Request);
-        }
-        catch (ArgumentException exception)
-        {
-            throw new InputException(new() { ["centerHeightFeet"] = exception.Message });
+            result = launch.Scenario.ModelKind switch
+            {
+                FlightModelKind.GravityOnly when launch.Scenario.Aerodynamics is null => contact
+                    ? GravityOnlySimulator.SimulateUntilGroundContact(launch.Request, launch.Contact)
+                    : GravityOnlySimulator.Simulate(launch.Request),
+                FlightModelKind.GravityAndDrag when launch.Scenario.Aerodynamics is { } aerodynamics => contact
+                    ? GravityDragSimulator.SimulateUntilGroundContact(launch.Request, aerodynamics, launch.Scenario.GroundElevationMetres)
+                    : GravityDragSimulator.Simulate(launch.Request, aerodynamics),
+                _ => throw new ArgumentException("Executed model and aerodynamic context disagree.", nameof(launch))
+            };
         }
         catch (Exception exception) when (exception is ArithmeticException or InvalidOperationException)
         {
@@ -43,13 +51,24 @@ internal sealed class Experiment
 
     internal static Experiment Analyze(FlightRequest request, SimulationResult result, ExecutedScenario scenario)
     {
+        if (result.ModelKind != scenario.ModelKind ||
+            (scenario.ModelKind == FlightModelKind.GravityAndDrag) != (scenario.Aerodynamics is not null))
+            throw new ArgumentException("Result and executed model context disagree.", nameof(scenario));
         var warnings = new List<string>();
         TrajectorySample? maximum = null;
         Vector3d? displacement = null;
         Vector3d? horizontal = null;
         double? distance = null;
         double? height = null;
-        try { maximum = GravityOnlyTrajectory.GetMaximumHeight(result, request); }
+        try
+        {
+            maximum = result.ModelKind switch
+            {
+                FlightModelKind.GravityOnly => GravityOnlyTrajectory.GetMaximumHeight(result, request),
+                FlightModelKind.GravityAndDrag => GravityDragTrajectory.GetMaximumHeight(result, request, scenario.Aerodynamics!),
+                _ => throw new ArgumentException("Result lacks production model identity.", nameof(result))
+            };
+        }
         catch (ArithmeticException exception) { warnings.Add($"Maximum over simulated interval unavailable: {exception.Message}"); }
         if (maximum is not null)
         {
@@ -83,7 +102,7 @@ internal sealed class Experiment
 
     public ExperimentResponse Display(Guid id, int count)
     {
-        var path = DisplaySampler.Sample(Result, Request, count);
+        var path = DisplaySampler.Sample(Result, Request, count, Scenario.Aerodynamics);
         return new(id, Scenario, Result.CompletionReason.ToString(), Request.Duration, Result.FinalTime,
             Result.Samples.Count, count, path.Points.Length, path.Source, path.Points, Landmarks, Measurements,
             Warnings.Concat(path.Warnings).ToArray());
