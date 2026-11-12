@@ -1,6 +1,6 @@
 # M1 Gravity-Only Simulator Contracts
 
-> **Status:** Provisional M1 working specification — adopted 2026-11-01; Issue #5 numerical certification updated 2026-11-04\
+> **Status:** Provisional M1 working specification — adopted 2026-11-01; Issue #5 numerical certification updated 2026-11-04; approved Issue #22 occurrence/timing certificate implemented locally 2026-11-12, pending publication\
 > **Issues:** [#3 — Physical state objects and simulation interfaces](https://github.com/skolins3651/lets-play-baseball/issues/3), with executable integration in [#4](https://github.com/skolins3651/lets-play-baseball/issues/4) and contact/measurements in [#5](https://github.com/skolins3651/lets-play-baseball/issues/5)\
 > **Scientific specification:** [`conventions.md`](conventions.md)\
 > **Architecture:** [`docs/architecture.md`](../architecture.md) summarizes the current design; root [`AGENTS.md`](../../AGENTS.md) governs contributions.
@@ -90,7 +90,7 @@ Fixed-step RK4 is the initial baseline, not a permanent restriction on future me
 
 ### Shared infrastructure after Issue #6
 
-`FlightExecution` owns indexed progression, ordinary work/sample budgets, allocation, immediate contact, completion, exception context, and successful result construction. Its advancement/event delegates preserve specialized physical policies. `TrajectoryEvaluation` owns timestamp lookup and exact recorded-maximum comparisons. `NumericalEventInterval` contains the unchanged interior-time and finite-state checks. `Rk4Integrator`, `SimulationTimeGrid`, and the gravity uncertainty formulas and fast paths are unchanged. Drag's consistency policy and apex witness do not apply to gravity-only execution.
+`FlightExecution` owns indexed progression, ordinary work/sample budgets, allocation, immediate contact, completion, exception context, and successful result construction. Its advancement/event delegates preserve specialized physical policies. `TrajectoryEvaluation` owns timestamp lookup and exact recorded-maximum comparisons. `NumericalEventInterval` contains the unchanged interior-time and finite-state checks. `Rk4Integrator`, `SimulationTimeGrid`, and `GravityOnlyRefinement` remain unchanged. Issue #22 adds a gravity-specific postcondition on the refiner's proposed contact; it preserves the existing local uncertainty certificates. Drag's enabled-drag consistency policy and apex witness do not apply to gravity-only execution.
 
 ## Unconstrained indexed time and resource policy
 
@@ -150,9 +150,9 @@ Initial center Z is compared exactly with H: below rejects unsupported penetrati
 
 ### Detection and localization
 
-Constant nonnegative gravity makes vertical velocity nonincreasing and the path concave downward. From an airborne state, an on/below-plane descending endpoint supplies first-contact evidence. An exact later descending endpoint can complete without further evaluation. For launch and return within one step, exclude the initial root; if the return endpoint is below the plane, numerically find the apex and require a resolvable above-plane state before contact refinement. Inconsistent candidates fail. These assumptions are gravity-specific, not guarantees about future aerodynamic models.
+Constant nonnegative gravity makes vertical velocity nonincreasing and the path concave downward. An on/below-plane descending endpoint supplies a numerical contact candidate. A later endpoint exactly on the represented plane needs no further RK4 evaluation, but must pass the independent occurrence/timing certificate below. For launch and return within one step, exclude the initial root; if the return endpoint is below the plane, numerically find the apex and require a resolvable above-plane state before contact refinement. Inconsistent candidates fail. These assumptions are gravity-specific, not guarantees about future aerodynamic models.
 
-Bisection maintains an above-plane lower contact endpoint and on/below-plane descending upper endpoint. Apex brackets have positive/nonpositive vertical velocity. Trial states advance through unchanged RK4 from the **original ordinary interval start**, never from successively narrowed endpoints. Compare signs without multiplying residuals. Analytical gravity/contact/apex formulas occur only in verification references.
+Bisection maintains an above-plane lower contact endpoint and on/below-plane descending upper endpoint. Apex brackets have positive/nonpositive vertical velocity. Trial states advance through unchanged RK4 from the **original ordinary interval start**, never from successively narrowed endpoints. Compare signs without multiplying residuals. Integration and event localization remain numerical; constant-gravity expressions are additionally used only as the bounded event-evidence postcondition below, never to generate or replace states or solve for a contact timestamp.
 
 For nonexact contact, all of the following must hold simultaneously:
 
@@ -220,9 +220,62 @@ For every safely evaluated timestamp in the bracket, its interval from the fixed
 
 Time, contact-height residual, every position and velocity component, finite state, and valid descending contact evidence remain conjunctive. These are local bounds relative to one numerical anchor; they do not bound accumulated integration error or establish empirical baseball accuracy. The rounding derivations must be revisited if dynamics or RK4 operation order change.
 
-A verified exact evaluated contact root collapses localization uncertainty only after direction, horizon, finite-state, and bracket/launch evidence pass. Mere proximity never establishes contact. Nonexact success selects the evaluated upper endpoint and changes only its center Z to H, with residual <= 1e-9 m and every uncertainty bound satisfied. Retain its time, X/Y, and velocity. This event projection is neither collision response nor general trajectory clamping.
+A verified exact evaluated contact root identifies one numerical timestamp after direction, horizon, finite-state, and bracket/launch checks. Rounded equality alone does not establish physical occurrence or timely first contact; every proposed contact must also pass the following postcondition. Mere proximity never establishes contact. Nonexact success selects the evaluated upper endpoint and changes only its center Z to H, with residual <= 1e-9 m and every uncertainty bound satisfied. Retain its time, X/Y, and velocity. This event projection is neither collision response nor general trajectory clamping.
 
 Check convergence before requesting another trial. A bracket with no interior timestamp may use an already evaluated state only if every bound passes. Otherwise timestamp stagnation, unsafe RK4 coefficients/midpoints/arithmetic, invalid brackets, unresolved airborne excursions, or 128-evaluation exhaustion throw contextual `ArithmeticException`. No partial successful trajectory is returned.
+
+### Independent occurrence and first-contact timing (Issue #22)
+
+`GravityContactEvidence` validates the unchanged refiner's proposed terminal time before `FlightExecution` records or accepts contact. It checks both the original ordinary anchor and the immutable release state independently, including ordinary exact roots, roots encountered during bisection, exact upward-launch returns, and contact at the horizon. Disabled drag uses the same check while retaining its drag identity and settings. Immediate stationary/downward contact remains the known initial state and bypasses integration and this postcondition.
+
+For each origin `(to, zo, vo)`, use the exact mathematical values of the supplied binary64 inputs and the existing rounded contact height H:
+
+```text
+d(s) = s - to
+C    = zo - H
+Q(s) = C + vo*d(s) - g*d(s)*d(s)/2
+W(s) = vo - g*d(s)
+```
+
+The origin must be airborne, or be the initial time-zero touching upward launch. At proposed time t require `upper(Q(t)) <= 0` and `upper(W(t)) < 0` for **both** origins. A strictly positive clearance lower bound disproves contact; an enclosure that cannot establish occurrence/direction rejects as unresolved. A maximum-travel reachability bound is merely necessary and is not used as sufficient contact evidence.
+
+Then, independently for each origin, require either a certified clearance enclosure **exactly `[0,0]`**, or a certified first-contact window `[a,t]` of actual width no greater than the existing represented `T = 1e-10 s`, with `lower(Q(a)) >= 0`. The singleton proves the mathematical clearance is zero, not just that an ordinary rounded expression or coordinate equals zero. Descending direction is still required. If both origins certify singleton zeros, no earlier timestamp is needed.
+
+Construct the common earlier timestamp as `a = max(anchor.Time, 0, SubtractBounds(t,T).Upper)`. The subtraction upper endpoint is the least binary64 value not below the exact real t-T. Thus a >= t-T and a >= anchor.Time. Require a < t and independently certify the width with `SubtractBounds(t,a)`: positive lower bound and upper bound <= T. Never decrement a to manufacture a window or widen T. These proof timestamps are not samples or RK4 trial requests, so no representable RK4 midpoint between a and t is needed.
+
+From an airborne origin, constant nonnegative gravity admits at most one future qualifying descending crossing. An upward touching launch with positive gravity has the initial root plus one positive descending return; t > to and certified negative W(t) exclude the initial root. With zero gravity it cannot return. Therefore the terminal signs prove the qualifying root r <= t; singleton Q proves r=t, otherwise nonnegative Q(a) proves r>=a. The combined certificate establishes `0 <= t-r <= T` for each origin, including the authoritative release trajectory. Crossing-by-time alone does not establish this timing condition.
+
+The anchor and release are distinct exact input states; no claim is made that the rounded anchor lies on the exact release trajectory. Their roots must fit the same absolute window (or equal t), rather than silently combining their clearances and velocities. Release evidence prevents prior coordinate rounding from erasing original clearance. The common cutoff protects first-contact ordering relative to the last ordinary anchor. These event proofs do not certify global six-component integration error or empirical baseball accuracy.
+
+#### Scalar enclosures and compensated cancellation
+
+Assume binary64 round-to-nearest, ties-to-even, gradual underflow, and explicit single-rounding FMA. Check every required intermediate and outward endpoint for finiteness. All arithmetic below is private to the gravity event helper; no public precision subsystem or analytical state evaluator is introduced.
+
+For addition/subtraction use TwoSum: `s=fl(a+b)`, `z=fl(s-a)`, `e=fl(fl(a-fl(s-z))+fl(b-z))`. Subject to finite required operations, `a+b=s+e` exactly, including gradual underflow. If e=0 return `[s,s]`; if e>0 return `[s,BitIncrement(s)]`; if e<0 return `[BitDecrement(s),s]`. These are tight directed bounds; subtraction negates the second finite operand exactly. See [Ogita, Rump, and Oishi, Theorem 3.4](https://www.tuhh.de/ti3/paper/rump/OgRuOi05.pdf).
+
+For multiplication let `p=fl(a*b)` and `e=FMA(a,b,-p)`. [Explicit .NET FMA](https://learn.microsoft.com/en-us/dotnet/api/system.math.fusedmultiplyadd?view=net-10.0) rounds the exact ternary expression once. A nonzero residual has the exact product error's sign and permits the corresponding directed endpoint. A zero residual can have underflowed and does not generally prove exactness. Without a proof, enclose the product with both adjacent values, even when p is zero; unrepresentable outward endpoints reject.
+
+The sufficient safe-product threshold is `abs(p) >= 2^-968`. Two binary64 significands yield at most 106 product bits. At or above that rounded magnitude, the exact product's normalized exponent is at least -969, so its least-significant-bit grid exponent is at least `-969-105 = -1074`. The rounding residual has at most 53 significant bits, lies on the minimum-subnormal grid, and is finite and exactly representable. FMA therefore returns that exact residual in this range; zero then proves exactness. This is a derivation, not an empirical threshold.
+
+Multiplication by zero or +/-1 is structurally exact for finite operands. Multiplication by +/-1/2 is exact only when finite doubling of the rounded product reproduces the corresponding signed operand. A failed round trip supplies no exactness proof. Signed zero denotes the same mathematical zero; addition/subtraction underflow is covered by TwoSum. A product or FMA residual lost below the subnormal range is never silently promoted to exact zero.
+
+For one scalar affine expression `a*b+c`, retain a certified exact product residual ep and TwoSum addition residual es: `a*b=p+ep`, `p+c=s+es`, hence `a*b+c=s+(ep+es)`. Enclose ep+es using TwoSum, then add that correction interval to `[s,s]`. This preserves proven cancellation. If ep cannot be certified exact, fall back to ordinary conservative product-interval plus addend; an approximate residual is never used as an exact correction. All required intermediate range checks remain in force, even when an alternative arithmetic method could recover a finite answer.
+
+Compose interval addition by directed endpoint sums, multiplication by interval corners, and affine expressions by their box corners; multilinearity gives containing extrema. Negation and comparisons/min/max of finite endpoints are exact. Evaluate `D=SubtractBounds(s,to)`, `C=SubtractBounds(zo,H)`, `halfD=D/2`, `rate=Affine([-g,-g],halfD,[vo,vo])`, `Q=Affine(D,rate,C)`, and `W=Affine([-g,-g],D,[vo,vo])`. Elapsed-time bounds contain the actual mathematical timestamp difference, not just the integrator's rounded interval. Repeated appearances of d may conservatively lose dependence, but can never falsely narrow a bound.
+
+The compensated affine bound is needed for legitimate exact horizons. With u=2^-52, `t=zo=1-u`, `vo=-u*u`, `g=2*(1+u)`, H=0, the exact rate `vo-g*t/2=-1` and Q(t)=0. Independent intervalization loses the cancelling product/addition residuals; retaining them certifies the exact root. Neither this identity nor FMA introduces an integration or root-solving shortcut.
+
+#### Rejections, compatibility, and limits
+
+At H=1 and H=2^20, one-ULP clearance with speed .75 ULP/s and zero gravity cannot reach the plane in one second, although RK4 rounds onto it. These cases throw contextual `ArithmeticException` in gravity-only and both disabled-drag modes. Returning duration would violate `SimulationResult` because the required recorded endpoint is on-plane and descending. Do not fabricate positive clearance, move H, discard a sample, or swallow rejection as no contact.
+
+Crossing-by-time is also insufficient: with clearance u and speed 1.25u/s, true contact is .8 s while the old equality shortcut selects 1 s. Terminal Q/W signs pass, but the earlier-window evidence rejects. Conversely a root can be within T yet before the rounded-up cutoff. For example t=1, C=16.9999999983, vo=-17 has delay about 9.999990378245831e-11 s but no containing represented earlier endpoint within T. Report inability to certify the selected window, not a proved delay exceeding T.
+
+At t=2^19 a 2^-34 s earlier gap fits; immediately above that timestamp the preceding gap is 2^-33 s and does not. Nonexact evidence rejects when no earlier timestamp fits. A mathematically exact root can still succeed without a window. Unresolved underflow/cancellation, bound overflow, or unrepresentable endpoints reject deliberately; not every finite valid request is executable.
+
+Required failures retain origin, operation, and candidate-time diagnostics plus the existing integration-step/time wrapper. The refiner's local position/velocity certificates and all state/time safety checks remain unchanged and conjunctive. No returned sample is adjusted by this helper. It adds no RK4 calls, no adaptive retry, and at most four origin/timestamp evaluations with bounded scalar corner arithmetic. Provenance identifies `classical-rk4/indexed-v1;gravity-events-v2`, including disabled drag; enabled-drag policies are unchanged.
+
+NUnit verifies the actual C# scalar/composite enclosures against verification-only exact binary-rational arithmetic, including deterministic and seeded adversarial ranges. Public regressions retain the 42 test-first cases, genuine exact/nonexact contacts, launch/horizon semantics, geometry, model provenance, ownership, budgets, and optional analysis contracts. Numerical tests support the implementation; they do not replace the arithmetic derivation.
 
 ### Actual-work budget
 
@@ -248,7 +301,7 @@ The apex's `abs(vhat.Z) <= 1e-9 m/s` residual is a direct check of the selected 
 
 The audit did demonstrate a separate nonexact **apex-height** failure of the same rounding-certification kind: from `z0 = 2^30`, `vz0 = 0.007603029409634734`, gravity `242.45617275970022`, and a single interval of `7.839591505441008e-5 s`, the old accepted bracket `[3.135836415265976e-5, 3.13583664890401e-5]` contained evaluated heights differing by `2^-22 m` (for example at `3.135836623030339e-5 s`). Its tiny mathematical height-change estimate missed that jump. Nonexact apex height now reuses the approved position certificate, unchanged in its formula, and this coarse-coordinate case rejects explicitly. No apex velocity-residual tolerance was altered.
 
-Exact contact/apex roots identify one verified evaluated timestamp: bracket-localization uncertainty then collapses to zero, with finite-state and event/bracket conditions still required. These fast paths do not promise a smooth neighboring rounded trajectory or a uniform error bound over a nonzero neighborhood. Immediate contact likewise returns the known initial point. Terminal-Z projection remains restricted to nonexact contact only after **all** position and velocity certificates pass; it never changes velocity or conceals failed certification. Height residuals are checks of the selected represented state against the represented contact plane, with outward-rounded subtraction. Time endpoints themselves remain the exact recorded doubles.
+Exact evaluated contact/apex roots identify one numerical timestamp, with finite-state and event/bracket conditions still required. Contact additionally requires the Issue #22 occurrence/timing postcondition above; historical guidance treating rounded plane equality as independently sufficient is superseded. Apex refinement is unchanged. These fast paths do not promise a smooth neighboring rounded trajectory or a uniform error bound over a nonzero neighborhood. Immediate contact returns the known initial point. Terminal-Z projection remains restricted to nonexact contact after **all** position and velocity certificates pass; no successful contact is published unless the independent postcondition also passes. Projection never changes velocity or conceals failed certification. Height residuals compare the selected represented state against the represented plane with outward-rounded subtraction. Time endpoints remain the exact recorded doubles.
 
 Measurements run only when requested. Unsafe numerical analysis throws rather than weakening accuracy or concealing failures.
 

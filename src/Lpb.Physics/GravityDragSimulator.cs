@@ -34,7 +34,7 @@ public static class GravityDragSimulator
         {
             var advance = CreateAdvance(request, aerodynamics);
             TrajectorySample? Locate(TrajectorySample current, TrajectorySample next) =>
-                GravityOnlySimulator.TryFindContact(current, next, contact, request.GravityMagnitude, advance);
+                GravityOnlySimulator.TryFindContact(current, next, contact, request.GravityMagnitude, request.InitialState, advance);
             return FlightExecution.Run(source, advance, Locate);
         }
         var numerical = new DragNumericalEvaluation(request, aerodynamics);

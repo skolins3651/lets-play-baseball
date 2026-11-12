@@ -34,21 +34,27 @@ public static class GravityOnlySimulator
         Func<TrajectorySample, double, FlightState> advance = (anchor, time) =>
             Rk4Integrator.Step(anchor.Time, time, anchor.State, evaluate);
         TrajectorySample? FindContact(TrajectorySample current, TrajectorySample next) =>
-            TryFindContact(current, next, contact!, request.GravityMagnitude, advance);
+            TryFindContact(current, next, contact!, request.GravityMagnitude, request.InitialState, advance);
         return FlightExecution.Run(new FlightProvenance(request, contact), advance, contact is null ? null : FindContact);
     }
 
     internal static TrajectorySample? TryFindContact(TrajectorySample current, TrajectorySample next,
-        GroundContactSettings contact, double gravity, Func<TrajectorySample, double, FlightState> advance)
+        GroundContactSettings contact, double gravity, FlightState release,
+        Func<TrajectorySample, double, FlightState> advance)
     {
         if (next.State.Position.Z > contact.ContactHeight ||
             (next.State.Position.Z == contact.ContactHeight && next.State.Velocity.Z > 0))
             return null;
-        return RefineContact(current, next, contact, gravity, advance);
+        return RefineContact(current, next, contact, gravity, release, advance);
     }
 
     // Keep the fixed-anchor closure allocation on the actual event path only.
     private static TrajectorySample RefineContact(TrajectorySample current, TrajectorySample next,
-        GroundContactSettings contact, double gravity, Func<TrajectorySample, double, FlightState> advance) =>
-        GravityOnlyRefinement.FindContact(current, next, contact.ContactHeight, gravity, time => advance(current, time));
+        GroundContactSettings contact, double gravity, FlightState release,
+        Func<TrajectorySample, double, FlightState> advance)
+    {
+        var terminal = GravityOnlyRefinement.FindContact(current, next, contact.ContactHeight, gravity, time => advance(current, time));
+        GravityContactEvidence.Validate(current, release, terminal.Time, contact.ContactHeight, gravity);
+        return terminal;
+    }
 }
