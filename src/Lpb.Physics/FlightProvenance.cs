@@ -19,7 +19,7 @@ internal sealed class FlightProvenance
     internal AerodynamicSettings? Aerodynamics { get; }
     internal FlightModelKind ModelKind => Aerodynamics is null ? FlightModelKind.GravityOnly : FlightModelKind.GravityAndDrag;
     internal string NumericalPolicy => Aerodynamics is null || Aerodynamics.Disabled
-        ? "classical-rk4/indexed-v1;gravity-events-v1"
+        ? "classical-rk4/indexed-v1;gravity-events-v2"
         : "classical-rk4/indexed-v1;drag-full-state-v1;drag-events-v1";
 
     internal void ValidateRequest(FlightRequest request)

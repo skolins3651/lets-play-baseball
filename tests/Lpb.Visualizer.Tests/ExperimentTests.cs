@@ -6,6 +6,29 @@ namespace Lpb.Visualizer.Tests;
 
 public class ExperimentTests
 {
+    [TestCase("gravity")] [TestCase("zero-density")] [TestCase("zero-coefficient")]
+    public void GravityContactEvidenceFailureRemainsAContextualSimulationFailure(string mode)
+    {
+        // Construct the exact SI reproduction so UI unit conversion cannot alter its ULP clearance.
+        var launch = LaunchAdapter.Convert(mode == "gravity" ? Fixtures.Default : Fixtures.Drag);
+        var u = Math.BitIncrement(1d) - 1;
+        var request = new FlightRequest(new(new(0, 0, 1 + u), new(0, 0, -.75 * u)), 0, 1, 1);
+        var contact = new GroundContactSettings(0, 1);
+        AerodynamicSettings? a = mode switch
+        {
+            "gravity" => null,
+            "zero-density" => new(.145, 1, 0, .35),
+            _ => new(.145, 1, 1.225, 0)
+        };
+        var scenario = launch.Scenario with { InitialState = request.InitialState, GroundElevationMetres = 0,
+            BallRadiusMetres = 1, Aerodynamics = a,
+            ModelKind = a is null ? FlightModelKind.GravityOnly : FlightModelKind.GravityAndDrag };
+        var error = Assert.Throws<SimulationException>(() => Experiment.Run(new(request, contact, scenario)));
+        Assert.That(error!.InnerException, Is.TypeOf<ArithmeticException>());
+        Assert.That(error.Message, Does.Contain("Integration step 1").And.Contain("ordinary-anchor").And.Contain("still airborne"));
+        TestContext.Out.WriteLine(error.ToString());
+    }
+
     [TestCase("contact")]
     [TestCase("unconstrained")]
     public void ExactIllustrativeDragDefaultsProduceUsefulSuccessfulExperiment(string mode)
