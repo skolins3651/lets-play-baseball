@@ -1,6 +1,6 @@
 # M1 Gravity-Only Simulator Contracts
 
-> **Status:** Provisional M1 working specification — adopted 2026-11-01; Issue #5 numerical certification updated 2026-11-04; approved Issue #22 occurrence/timing certificate implemented locally 2026-11-12, pending publication\
+> **Status:** Provisional M1 working specification — adopted 2026-11-01; Issue #5 numerical certification updated 2026-11-04; Issue #22 occurrence/timing certificate merged through [PR #24](https://github.com/skolins3651/lets-play-baseball/pull/24) on 2026-11-12\
 > **Issues:** [#3 — Physical state objects and simulation interfaces](https://github.com/skolins3651/lets-play-baseball/issues/3), with executable integration in [#4](https://github.com/skolins3651/lets-play-baseball/issues/4) and contact/measurements in [#5](https://github.com/skolins3651/lets-play-baseball/issues/5)\
 > **Scientific specification:** [`conventions.md`](conventions.md)\
 > **Architecture:** [`docs/architecture.md`](../architecture.md) summarizes the current design; root [`AGENTS.md`](../../AGENTS.md) governs contributions.
@@ -8,6 +8,8 @@
 ## Purpose
 
 Define the implemented, engine-independent gravity-only simulator, inputs, outputs, and execution policy. Issue #3 established `Vector3d`, `FlightState`, and `FlightRequest`; Issue #4 adds executable RK4 integration and immutable trajectory results. The contracts support deliberate evolution for ground-contact events, physical object parameters, aerodynamics, and spin with first-contact termination and on-demand analysis now implemented in Issue #5. Issue #6 implements a separate [gravity-plus-drag model](drag-model.md) while preserving this gravity-only baseline; spin remains deferred.
+
+The accepted [Model A scientific reference](spin/model-a.md) documents future spin/lift without changing these implemented state or API contracts. Positive constant gravity's decreasing vertical velocity, unique-apex reasoning, and associated contact/evaluation certificates retain their gravity-specific scope. Magnus lift requires renewed justification under Model A's [event-system audit](spin/model-a.md#9-existing-contact-apex-and-evaluation-assumptions-to-revisit) and [verification obligations](spin/model-a.md#8-mathematical-and-numerical-verification-obligations); those references prescribe no replacement algorithms or additional guarantees here.
 
 ## Implemented inputs (Issue #3)
 

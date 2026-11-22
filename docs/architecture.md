@@ -1,10 +1,12 @@
 # Let's Play Baseball — Architecture
 
-> **Status:** Working Draft v0.9 — November 12, 2026\
+> **Status:** v0.10 — A2.3 documentation integration independently reviewed and accepted on November 22, 2026; documentation approval does not authorize Model A implementation\
 > **Purpose:** Maintain the current project-wide architecture, summarize approved decisions, and connect workstreams to their detailed specifications.\
 > **Scope:** Project-wide principles (including deferred reporting and publication systems), completed Milestone 0 (setup), and active Milestone 1 (ball flight). Detailed physical equations and contracts live in the linked specialized specifications.
 
-Revision v0.9 records Issue #22's independently reviewed gravity occurrence/first-contact timing certificate, implemented locally pending Phase B review and separate publication authorization. Its detailed arithmetic and failure policy live in the gravity-only contract. Revision v0.8 recorded the approved Trajectory Lab drag-support follow-up and standing principles for compositional dynamics, proportional verification, production performance, and shared authoritative outcomes; that Lab enhancement was merged through [PR #23](https://github.com/skolins3651/lets-play-baseball/pull/23). Revision v0.7 recorded Issue #6 gravity-plus-drag, shared numerical execution, model-aware provenance, and specialized drag event policies; that independently reviewed implementation was merged through [PR #21](https://github.com/skolins3651/lets-play-baseball/pull/21). Revision v0.6 recorded the local visualizer boundary and ephemeral debugging policy for internal milestone 5.5 ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19)), merged through PR #20. Revision v0.5 adds first-contact termination, continuous evaluation, optional measurements, and actual-work budgets. Revision v0.4 records the first executable gravity-only simulator. Revision v0.3 adopted the M1 physical conventions and minimal inputs. Earlier v0.2's provisional center-field-oriented axes remain superseded.
+Revision v0.10 integrates the approved A2.1/A2.2 Issue #7 research baseline into the project-wide map, connecting scientific references, provisional modeling decisions, and implementation boundaries. Model A is scientifically documented but not implemented.
+
+Revision v0.9 recorded Issue #22's independently reviewed gravity occurrence/first-contact timing certificate at its local Phase B stage; the correction was subsequently completed and merged through [PR #24](https://github.com/skolins3651/lets-play-baseball/pull/24) on November 12, 2026. Its detailed arithmetic and failure policy live in the gravity-only contract. Revision v0.8 recorded the approved Trajectory Lab drag-support follow-up and standing principles for compositional dynamics, proportional verification, production performance, and shared authoritative outcomes; that Lab enhancement was merged through [PR #23](https://github.com/skolins3651/lets-play-baseball/pull/23). Revision v0.7 recorded Issue #6 gravity-plus-drag, shared numerical execution, model-aware provenance, and specialized drag event policies; that independently reviewed implementation was merged through [PR #21](https://github.com/skolins3651/lets-play-baseball/pull/21). Revision v0.6 recorded the local visualizer boundary and ephemeral debugging policy for internal milestone 5.5 ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19)), merged through PR #20. Revision v0.5 adds first-contact termination, continuous evaluation, optional measurements, and actual-work budgets. Revision v0.4 records the first executable gravity-only simulator. Revision v0.3 adopted the M1 physical conventions and minimal inputs. Earlier v0.2's provisional center-field-oriented axes remain superseded.
 
 ## 1. Vision
 
@@ -36,7 +38,19 @@ These are working principles subject to revision when prototypes reveal better a
 
 ### Documentation relationships
 
-This overview records project-wide responsibilities, current decisions, and planned direction. Specialized workstream specifications own detailed equations, contracts, validation rules, and extended rationale. The current physics specifications are [physical conventions and analytical fixtures](physics/conventions.md), [gravity-only contracts](physics/gravity-only-contract.md), and [quadratic drag contracts and verification](physics/drag-model.md). The [visualizer guide and application contract](visualizer.md) owns presentation, temporary ownership, and private HTTP details. Future active workstreams should be linked here in the same way.
+This overview records project-wide responsibilities, current decisions, and planned direction. Specialized workstream specifications own detailed equations, contracts, validation rules, and extended rationale. The implemented physics baseline is documented in [physical conventions and analytical fixtures](physics/conventions.md), [gravity-only contracts](physics/gravity-only-contract.md), and [quadratic drag contracts and verification](physics/drag-model.md). The [visualizer guide and application contract](visualizer.md) owns presentation, temporary ownership, and private HTTP details.
+
+The accepted Issue #7 scientific references have distinct responsibilities:
+
+| Reference | Responsibility |
+| --- | --- |
+| [Model taxonomy](physics/spin/model-taxonomy.md) | A–G aerodynamic representations, independent R0–R3 rotational policies, maturity, and historical scope narrowing |
+| [Model A scientific reference](physics/spin/model-a.md) | Mathematical definitions, provisional lift/rotation choices, applicability limits, verification targets, and event-assumption audit |
+| [Source register](research/aerodynamics/source-register.md) | Bibliography, experimental/fit provenance, access qualifications, and correction history |
+| [Decision register](research/aerodynamics/decision-register.md) | Adopted scope, provisional references, comparators, unresolved calibration, deferrals, and reconsideration criteria |
+| [Experiments I–III](research/aerodynamics/experiments.md) | Original scientific questions, retained refinements, proposed procedures, controls, candidate outputs, and execution prerequisites |
+
+Merged code, tests, and adopted numerical contracts govern implemented behavior. Scientific-documentation acceptance does not establish empirical validity, finalize provisional coefficients, approve new public software contracts, or authorize implementation. Earlier stage records remain historical where later accepted status or decisions supersede them; the corrected R1 record (R08 revision 1.1 in the source register) controls over its original predecessor.
 
 When an approved specialized decision supersedes this overview, update its summary, links, and obsolete guidance together. A newer unapproved draft does not automatically override an approved decision. Preserve useful history with clear labels instead of maintaining competing current guidance.
 
@@ -76,6 +90,14 @@ The historical/scenario subsystem owns revisions and timeline provenance, analyt
 
 **Current stage:** Issues #2/#3 established [physical conventions and analytical fixtures](physics/conventions.md) and validated inputs. Issue #4 adds the headless `GravityOnlySimulator`, classical RK4 with separate gravity derivatives, and immutable `TrajectorySample`/`SimulationResult` outputs with `DurationReached` completion. The [gravity-only contract](physics/gravity-only-contract.md) owns the detailed APIs, ownership, timing, resource policy, and failures. Issue #5 adds `SimulateUntilGroundContact`, immutable contact geometry, bounded numerical event refinement, and optional sample-only/gravity-specific analysis. Issue #6 adds `GravityDragSimulator`, immutable explicit aerodynamic parameters, model-aware continuous analysis, and a shared `FlightExecution` core. The [drag specification](physics/drag-model.md) owns its full-state consistency checks, specialized contact/apex policies, references, and limits. Issue #22 adds independent ordinary-anchor and release-origin occurrence/timing evidence before accepting gravity contact, including disabled drag. The refiner and its nonexact certificates remain unchanged; rounded plane equality alone is superseded as sufficient event evidence. Free flight remains unconstrained; the CLI remains a bootstrap shell. The following scope describes the full milestone, not the requirements of every individual issue.
 
+### Issue #7 scientific baseline — documented, not implemented
+
+- **Selected initial aerodynamic model:** Model A smooth Magnus, with provisional Nathan saturation and ASR-B; ASR-A remains an essential scientific comparator. R0 is Experiment I's control and R1-U its provisional physical rotational reference. Experiment I is the current scientific investigation, not an executable comparison workflow in the existing engine or Lab.
+- **Deferred or unresolved:** Alternative lift-law implementations unless separately authorized; empirical beta calibration and detailed coefficient uncertainty; seam-aware B–D and exploratory E–G; R2/R3, full attitude, and Experiments II/III. Models and rotational policies remain separate dimensions, not a commitment to make every documented combination a runtime mode.
+- **Separate workstreams:** Atmosphere (#8), wind (#9), broader numerical studies (#10), and empirical calibration/validation (#11) remain pending their own scoped work. Existing constant-coefficient stationary-air drag remains the controlled baseline.
+
+Shared execution and lookup can serve multiple models, but force-specific mathematical assumptions require justified numerical policies. Magnus lift requires renewed contact, apex, event-localization, and continuous-evaluation reasoning; the [Model A event audit](physics/spin/model-a.md#9-existing-contact-apex-and-evaluation-assumptions-to-revisit) identifies those gaps without replacing algorithms or extending current guarantees. Scientific references do not authorize executable implementation.
+
 ### Minimum interactive visualizer (5.5 / Issue #19)
 
 `Lpb.Visualizer` is a loopback ASP.NET Core application using locally bundled Plotly.js and direct Physics references. The original #19 gravity-only tool is extended by the scoped #6 follow-up to select gravity only (the unchanged default) or gravity plus constant-coefficient quadratic drag, independently of contact-aware/unconstrained termination. One experiment retains its immutable result/request, explicit model identity, applicable aerodynamic settings, and presentation context temporarily. Matching Physics analysis supplies bounded plotting samples independent of numerical timestep. Three views share the same numerical points. Measurements and landmarks remain independent of path decimation; optional failures do not invalidate a successful simulation.
@@ -104,14 +126,14 @@ Bat-ball contact, swing generation, athlete/fielding dynamics, wall or ground bo
 - Internal units: SI (meters, seconds, kilograms, radians); display conversions only at input/output boundaries.
 - Internally use double-precision vectors and numerical quantities.
 - Field coordinates: a right-handed, orthonormal Cartesian frame fixed to the field, with **+X** along the first-base/right-field foul-line direction, **+Y** along the third-base/left-field foul-line direction, and **+Z** upward. The origin is the rear tip of home plate at reference ground elevation. Ideal center field follows positive `X = Y`; this does not imply a symmetric stadium. See [physical conventions](physics/conventions.md).
-- Eventual spin is a 3D angular-velocity vector in radians/second using the right-hand rule; convert from rpm and axis descriptions at the boundary. Its runtime representation and evolution wait until the relevant physical model requires them.
+- Scientifically specified spin is a world-frame 3D angular-velocity vector in radians/second using the right-hand rule; convert from rpm and axis descriptions at the boundary. [Model A](physics/spin/model-a.md) defines its aerodynamic use; runtime spin representation and evolution remain unimplemented.
 - Fixed-step fourth-order Runge–Kutta (RK4) is the implemented initial baseline, with an internal time/state derivative-evaluator boundary; it is not a permanent restriction on methods. Independent analytical fixtures use declared absolute tolerances, and a manufactured nonconstant derivative verifies RK4 stages/weighting. Constant-acceleration agreement alone does not demonstrate fourth-order convergence; broader studies remain in #10.
 - Indexed simulation-time boundaries avoid accumulated timestamp drift. Free flight preserves whole-horizon preflight and exact requested-duration completion. Contact-aware flights end at first refined contact or duration, cap actual ordinary work at 100,000 steps, and use separately bounded refinement. Both permit at most 100,001 samples; immediate contact requires only one. Immutable results own their samples; unsafe arithmetic or unrepresentable progression throws rather than returning partial success. Detailed rules and limitations live in the [gravity-only contract](physics/gravity-only-contract.md).
 - Force calculations should be modular (gravity, drag, spin-dependent lift) and accept physical state and environmental conditions rather than engine objects.
 - Contact geometry is a finite, representable ground elevation plus positive ball radius. First contact and interior maxima use bounded numerical refinement through existing RK4. Results retain private immutable model identity, request, applicable aerodynamic settings, contact geometry, and numerical-policy identity. Continuous analysis requires explicit matching inputs; even disabled-drag results remain drag-model results. Drag contact derives radius from its aerodynamic configuration. Detailed accuracy and failure policies belong in the specialized physics contracts.
 - Atmospheric inputs must not double-count altitude and pressure. Document how density and other properties are derived.
 
-The linked physics specifications distinguish gravity-only certificates from drag numerical acceptance conditions. Enabled drag checks one full RK4 step against two half-steps in all six components, returns the full-step state on acceptance, and rejects unresolved calculations without adaptive integration. These observed checks and bounded event residuals are not certified global error bounds or empirical baseball accuracy. Shared execution and lookup do not assume a universal height shape; each model owns its dynamics and event reasoning. Magnus forces, environmental derivations, wind, variable coefficients, and empirical calibration remain later M1 work.
+The linked physics specifications distinguish gravity-only certificates from drag numerical acceptance conditions. Enabled drag checks one full RK4 step against two half-steps in all six components, returns the full-step state on acceptance, and rejects unresolved calculations without adaptive integration. These observed checks and bounded event residuals are not certified global error bounds or empirical baseball accuracy. Shared execution and lookup do not assume a universal height shape; each model owns its dynamics and event reasoning. Model A mathematics is scientifically documented; executable Magnus forces, environmental derivations, wind, variable coefficients, and empirical calibration remain later M1 work.
 
 ### M1 phases and exit tests
 
@@ -209,10 +231,18 @@ lets-play-baseball/
 ├── docs/
 │   ├── architecture.md
 │   ├── visualizer.md
-│   └── physics/
-│       ├── conventions.md
-│       ├── gravity-only-contract.md
-│       └── drag-model.md
+│   ├── physics/
+│   │   ├── conventions.md
+│   │   ├── gravity-only-contract.md
+│   │   ├── drag-model.md
+│   │   └── spin/
+│   │       ├── model-taxonomy.md
+│   │       └── model-a.md
+│   └── research/
+│       └── aerodynamics/
+│           ├── source-register.md
+│           ├── decision-register.md
+│           └── experiments.md
 ├── .github/workflows/
 ├── README.md
 └── LPB.slnx
@@ -223,7 +253,7 @@ lets-play-baseball/
 ## 8. Deferred design decisions
 
 - Scenario-specific pitched-ball conditions and alternative C2C unit/angle conventions. Basic friendly units and exact-cardinal conversion are defined for the local visualizer; the field frame and internal SI units remain unchanged.
-- Empirical calibration of drag/lift coefficients; spin decay and seam effects. Issue #6 documents scientific sources and illustrative deterministic inputs without claiming calibration.
+- Empirical calibration of drag/lift/torque coefficients and detailed uncertainty. Issue #6 retains illustrative deterministic inputs; Issue #7's [decision register](research/aerodynamics/decision-register.md) records provisional lift/R1-U references, illustrative beta, and deferred seam/axis models without claiming final calibration.
 - Broader solver convergence and practical accuracy across physical models (#10), future alternative/adaptive methods, specialized arithmetic for extreme inputs. Issue #5 localization tolerances and limitations are specified in the gravity-only contract. Issue #4 establishes fixture-specific tolerances and a provisional execution limit; fixed-step RK4 is the current baseline.
 - Serialization schemas, replay granularity, and strictness of cross-platform reproducibility.
 - Later collision, biomechanics, statistical, history, and scenario interfaces.
@@ -255,4 +285,4 @@ Suggested LPB ChatGPT workspaces:
 
 **Routing reminders:** At each transition from architectural discussion to specialized physics or reporting research, suggest the corresponding chat. When a task requires local code/files, command execution, a repository edit, or PR review, suggest Codex or Work and prepare a scoped implementation prompt. When a substantial concept needs learning before implementation, suggest **Learning & Research** and return to the implementation chat with the outcome. Users need not open every suggested chat immediately.
 
-**Current next actions:** Complete Phase B local verification and independent review of the approved [Issue #22](https://github.com/skolins3651/lets-play-baseball/issues/22) gravity contact correction, including disabled drag. Publication and its Linux/Windows CI require separate Phase C authorization. The Lab drag-support follow-up was merged through PR #23; Issue #6 through PR #21, Issue #5 through PR #18, and the original visualizer through PR #20. Magnus (#7) follows successful resolution of #22. Atmosphere (#8), wind (#9), broader numerical studies (#10), empirical validation (#11), CLI/export (#12), and plotting/comparison (#13) remain separate tasks. Standing principles do not authorize new benchmarking, force-composition refactors, test consolidation, or stochastic implementation.
+**Current next actions:** Plan the initial Model A Magnus (#7) implementation against the approved A2.1/A2.2 scientific baseline under separate scoped authorization. The plan must address public software contracts and receive numerical review of contact, apex, event-localization, and continuous-evaluation behavior before implementation can be authorized. Model A remains unimplemented and its scientific coefficients remain provisional. Implementation, Git commit, and publication require separate authorization; documentation acceptance does not provide it. [Issue #22](https://github.com/skolins3651/lets-play-baseball/issues/22) is complete and merged through PR #24; the Lab drag-support follow-up through PR #23, Issue #6 through PR #21, Issue #5 through PR #18, and the original visualizer through PR #20. Atmosphere (#8), wind (#9), broader numerical studies (#10), empirical validation (#11), CLI/export (#12), and plotting/comparison (#13) remain separate tasks. Standing principles do not authorize new benchmarking, force-composition refactors, test consolidation, or stochastic implementation.

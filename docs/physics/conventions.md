@@ -83,9 +83,10 @@ Near-horizon fixtures use zero center-contact height, zero gravity, `vz0 = -1`, 
 
 ## Deferred capabilities and explicit non-decisions
 
-- Issue #6 implements constant-coefficient quadratic drag in stationary air; see [its specialized contract](drag-model.md). Atmosphere derivation, wind, and lift/Magnus forces remain later M1 work.
-- Spin is an eventual 3D angular-velocity vector (rad/s) in the adopted field frame, with direction given by the ordinary right-hand rule. Its representation, persistence, evolution, and aerodynamic coupling will be specified when the spin model requires them. Initial gravity-only state and integration do not need spin.
-- Ball orientation, seam geometry, quaternions, rotational torque, seam-shifted wake, and detailed collision dynamics are deferred. Their future introduction should be supported by model and state evolution, **not** by placeholder physics fields in this first solver.
+- Issue #6 implements constant-coefficient quadratic drag in stationary air; see [its specialized contract](drag-model.md). Atmosphere derivation, wind, and executable lift/Magnus forces remain later M1 work; Model A now has an accepted scientific specification.
+- Scientific spin is a world-frame 3D angular-velocity vector in rad/s, using the adopted field coordinates and ordinary right-hand rule. [Model A's definitions](spin/model-a.md#3-air-relative-kinematics-and-active-spin) distinguish transverse spin, gyrospin, spin factor, and ASR. The implemented `FlightState` still contains only position and linear velocity; runtime spin, persistence, and aerodynamic coupling require separate implementation authorization. Gravity-only state and integration do not need spin.
+- Aerodynamic quantities use air-relative velocity. Current stationary-air drag equates this with field velocity; the Model A reference makes the distinction explicit without implementing wind.
+- Full ball orientation, seam phase/geometry, quaternions, general vector-torque R2/R3 evolution, seam-shifted wake, and detailed collision dynamics remain deferred. The [taxonomy](spin/model-taxonomy.md) separates aerodynamic families from rotational policies, including the documented but unimplemented R0/R1-U choices. Future capabilities should be supported by justified model and state evolution, **not** by placeholder physics fields in this first solver.
 - No assumption is made that all future moving objects (e.g., players) must use this trajectory model. Reuse mathematical components when justified.
 - Empirical baseball-flight agreement is **validation** and is not a pass criterion for gravity-only verification. Later calibrated models must be assessed with their own evidence and assumptions.
 
@@ -94,7 +95,7 @@ Near-horizon fixtures use zero center-contact height, zero gravity, `vz0 = -1`, 
 - The conventions and analytical fixtures above are adopted as the provisional M1 baseline.
 - [`docs/architecture.md`](../architecture.md) summarizes the same coordinate convention; mathematical details remain here.
 - Issue #3's implemented inputs and Issue #4's executable solver/output contracts are documented in [`gravity-only-contract.md`](gravity-only-contract.md). Historical deferrals are labeled there.
-- Numerical integration and focused trajectory verification are implemented in Issue #4; contact-aware termination and optional measurements are implemented in Issue #5. The original gravity-only Trajectory Lab was merged through PR #20. Issue #6 headless drag was merged through PR #21; the approved [Lab follow-up](../visualizer.md) adds model selection using the unchanged Physics contracts. Broader plotting/comparisons remain later work.
+- Numerical integration and focused trajectory verification are implemented in Issue #4; contact-aware termination and optional measurements are implemented in Issue #5. The original gravity-only Trajectory Lab was merged through PR #20. Issue #6 headless drag was merged through PR #21; the [Lab follow-up](../visualizer.md), merged through PR #23, adds model selection using the unchanged Physics contracts. Broader plotting/comparisons remain later work.
 
 ## Drag conventions (Issue #6)
 
