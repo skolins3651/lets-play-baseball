@@ -2,9 +2,18 @@
 
 A modular, physics-grounded baseball simulation and management project written primarily in C#.
 
-M0 established the development foundation. M1 includes gravity-only and gravity-plus-quadratic-drag RK4, immutable results, first-ground-contact termination, and optional continuous trajectory analysis. Issue #6 was independently reviewed and merged through [PR #21](https://github.com/skolins3651/lets-play-baseball/pull/21). The Trajectory Lab ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19), PR #20) supports both models through the scoped #6 follow-up merged in [PR #23](https://github.com/skolins3651/lets-play-baseball/pull/23). The approved Issue #22 gravity contact correction is implemented locally pending review and separate publication authorization.
+M0 established the development foundation. M1 includes gravity-only and gravity-plus-quadratic-drag RK4, immutable results, first-ground-contact termination, and optional continuous trajectory analysis. Issue #6 was independently reviewed and merged through [PR #21](https://github.com/skolins3651/lets-play-baseball/pull/21). The Trajectory Lab ([Issue #19](https://github.com/skolins3651/lets-play-baseball/issues/19), PR #20) supports both models through the scoped #6 follow-up merged in [PR #23](https://github.com/skolins3651/lets-play-baseball/pull/23). Issue #22's gravity contact occurrence/timing correction was completed and merged through [PR #24](https://github.com/skolins3651/lets-play-baseball/pull/24).
 
 The [current architecture](docs/architecture.md) connects the project-wide design to the [physics conventions and analytical fixtures](docs/physics/conventions.md), [gravity-only contracts](docs/physics/gravity-only-contract.md), and [drag contracts and verification](docs/physics/drag-model.md). The authoritative simulation must remain independent of Unity, rendering, databases, and external runtime services. Future Unity integration may require retargeting, multi-targeting, or an adapter; a .NET 10 assembly is not assumed to load directly into Unity.
+
+Reviewed Issue #7 scientific references:
+
+- [Model taxonomy](docs/physics/spin/model-taxonomy.md): A–G aerodynamic representations and independent R0–R3 rotational policies.
+- [Model A mathematics](docs/physics/spin/model-a.md): Smooth Magnus, provisional lift/rotation references, applicability, verification, and event assumptions.
+- [Sources](docs/research/aerodynamics/source-register.md) and [decisions](docs/research/aerodynamics/decision-register.md): Evidence, fit provenance, modeling judgments, corrections, and unresolved calibration.
+- [Experiments I–III](docs/research/aerodynamics/experiments.md): Original questions, later refinements, controls, and prerequisites; I is the current investigation and II/III remain deferred.
+
+Model A lift/spin evolution is scientifically documented but not implemented. These references do not authorize new public software contracts or establish empirical calibration; implementation needs separate authorization. The existing CLI remains a bootstrap shell, and the Lab supports gravity/drag without spin controls or automated research comparisons.
 
 ## Prerequisites
 
@@ -137,7 +146,7 @@ Enabled drag compares one full RK4 step against two half-steps in **all six comp
 
 A zero density or coefficient reuses established gravity computation and event guarantees while retaining **drag identity and complete aerodynamic provenance**. Gravity-only evaluators reject that result; drag evaluators accept equivalent matching configurations and reject mismatches, even at recorded timestamps. Samples, actual completion, contact information, and on-demand measurements remain authoritative immutable Physics values. Optional analysis failure does not invalidate a successful flight.
 
-See [the drag specification](docs/physics/drag-model.md) for tolerances, resource accounting, independent references, rounding regressions, practical performance, and limitations. The research-only Python fixture generator is optional; ordinary build and CI remain .NET-only. The CLI remains unchanged. The Lab selects the matching authoritative APIs, preserves numerical diagnostics and optional-analysis fallback, and never silently changes numerical settings. [Issue #22](https://github.com/skolins3651/lets-play-baseball/issues/22)'s approved local correction applies the gravity occurrence/timing certificate to both disabled-drag modes while preserving complete drag provenance; enabled-drag policy is unchanged.
+See [the drag specification](docs/physics/drag-model.md) for tolerances, resource accounting, independent references, rounding regressions, practical performance, and limitations. The research-only Python fixture generator is optional; ordinary build and CI remain .NET-only. The CLI remains unchanged. The Lab selects the matching authoritative APIs, preserves numerical diagnostics and optional-analysis fallback, and never silently changes numerical settings. [Issue #22](https://github.com/skolins3651/lets-play-baseball/issues/22)'s correction, merged through [PR #24](https://github.com/skolins3651/lets-play-baseball/pull/24), applies the gravity occurrence/timing certificate to both disabled-drag modes while preserving complete drag provenance; enabled-drag policy is unchanged.
 
 ## Test dependencies and reproducibility
 
