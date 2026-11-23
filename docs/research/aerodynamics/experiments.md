@@ -7,7 +7,7 @@
 
 H02 is the recovered conceptual/historical source for Experiments I-III; it includes paraphrased conversation summaries and reports an original screenshot, not a complete verbatim transcript.
 H01 preserves later Model A refinements, and corrected R08 revision 1.1 controls rotational-policy interpretation over superseded R07.
-The accepted A2.1 source/decision registers establish provenance and statuses; their stage-specific closure language does not prohibit the subsequently authorized A2.2 drafts.
+The accepted A2.1 source/decision registers establish provenance and statuses; A2.2 subsequently documented the scientific program and proposed procedures.
 The present document records that program and proposes procedures needed to make comparisons interpretable; it reports no experimental results.
 
 | Experiment | Recovered original question and primary comparison | Current horizon |
@@ -261,7 +261,7 @@ No complete protocol matrix, public identifier/schema, parameter distribution, c
 The source register's restricted/unrecovered primary material remains a limitation: current bibliography access does not supply missing raw calibration or orientation data.
 The original three experiments remain preserved even where execution is deferred.
 
-## 7. Source trace and next review
+## 7. Source trace and documentation status
 
 - H02 sections 5-6: original questions, comparisons, diagnostics, initial-phase controls, and historical scope narrowing.
 - H01 sections 3/5/7: later Model A, lift/ASR and rotational comparisons, verification distinctions, and deterministic evaluation.
@@ -270,5 +270,5 @@ The original three experiments remain preserved even where execution is deferred
 - S09-S12: supported-ball and bearing-free torque evidence, calibration limitations, and differing low-/high-speed regimes; D01-D10 preserve the associated choices and statuses.
 
 No experiments were executed or empirical results produced in A2.2.
-The next action is independent scientific/documentation review of these two drafts.
-A2.3, implementation, staging/commit, Git publication, and GitHub modifications are outside this authorization.
+A2.3 completed repository integration of this scientific program.
+Executable protocols, public software contracts, implementation, and Git publication/merging require separate authorization.

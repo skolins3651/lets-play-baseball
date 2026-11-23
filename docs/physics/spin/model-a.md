@@ -12,7 +12,7 @@ These selections retain the statuses in decisions D01-D08; mathematical precisio
 
 The source register owns bibliographic identities, access qualifications, and source keys S01-S18/H01-H02/R01-R08.
 R08 revision 1.1 controls R1 interpretation and supersedes R07, including its incorrect numerical, sign, frame, and regime statements.
-Stage-specific A2.1 closure wording is historical; the current A2.2 authorization permits only this draft and the experimental-program draft.
+The historical A2.2 authorization covered only this scientific specification and the experimental-program document.
 Existing merged code and [gravity](../gravity-only-contract.md)/[drag](../drag-model.md) contracts remain unchanged.
 
 There is no explicit seam phase, full body attitude, geometry-resolved flow, or wake-memory state in A.
@@ -410,7 +410,7 @@ Reconsider the laws or parameter values when matched spin/trajectory measurement
 Scientific calibration remains chiefly Issue #11, with numerical studies under #10; beta, lift uncertainty, coefficient compatibility, and any distributions remain unresolved.
 No new physical-confidence bounds, fly-ball accuracy promise, or public parameter contract is created here.
 
-## 11. Source trace and review gate
+## 11. Source trace and documentation status
 
 - Equations (1)-(3), (5), (8) and transverse/gyro interpretation: S03/S04, re-expressed using the adopted field frame and air-relative velocity; zero-case extensions and symmetry/energy deductions are explicit LPB mathematical consequences.
 - Equation (4) and fit provenance: S03/S04 and R02; alternatives (6)/(7): S01 and S15 version 1, respectively.
@@ -418,5 +418,5 @@ No new physical-confidence bounds, fly-ball accuracy promise, or public paramete
 - R1-E context: S12; heuristic high-speed ancestry: S13, without treating golf-ball scaling or an alleged Alaways torque law as calibrated baseball evidence.
 - Experimental purpose and deferral: H01/H02, taxonomy, D01/D09/D10. Numerical/event audit: existing gravity/drag contracts and LPB analysis of their stated assumptions.
 
-This draft is for independent A2.2 scientific/documentation review. It neither amends the A2.1 decisions nor implements their models.
-A2.3 repository integration, all executable implementation, and publication remain separately gated.
+A2.3 completed repository integration of this A2.2 specification, which neither amends the A2.1 decisions nor implements their models.
+Executable software contracts, implementation, and Git publication/merging require separate authorization.

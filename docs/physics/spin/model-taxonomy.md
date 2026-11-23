@@ -8,7 +8,7 @@
 The recovered taxonomy handoff (H02 in the source register) reconstructs the November 13-14, 2026 discussions and their subsequent narrowing through November 22.
 Its descriptions are faithful paraphrases supported partly by recovered summaries, not complete verbatim transcripts.
 It establishes historical intent, not seven approved scientific specifications.
-The current A2.1 authorization controls scope; merged code and adopted repository contracts continue to govern implemented behavior.
+The historical A2.1 authorization limited that stage to the research baseline; merged code and adopted repository contracts continue to govern implemented behavior.
 The corrected R1 research record, revision 1.1 (R08), supersedes the original four-page record (R07).
 
 Only **Model A** is selected for the initial Issue #7 aerodynamic implementation.
@@ -162,13 +162,13 @@ These requirements are qualitative. They are not a universal compatibility matri
 | II - Seam averaging | B versus C or D under identical torque assumptions and compatible underlying coefficient data: what is lost by removing phase information? | Deferred |
 | III - Orientation sensitivity | C versus D, with R1/R2 where supported: does full orientation add predictive value beyond selected periodic corrections? Begin with fixed axis where appropriate. | Deferred |
 
-The handoff's candidate outputs and detailed experimental controls belong in later A2.2 documentation.
+The handoff's candidate outputs and detailed experimental controls are documented in the [experimental program](../../research/aerodynamics/experiments.md).
 No additional numbered experiment is inferred for E-G.
 Neither numerical agreement nor higher resolution alone establishes improved empirical accuracy.
 
 ## Carry-forward boundaries
 
-A2.2 will specify Model A mathematics, validity limits, invariants, and Experiments I-III; those specifications are not created here.
-A2.3 will integrate reviewed guidance into architecture and existing documentation, including stale Issue #22 publication wording.
+A2.2 completed [Model A mathematics, validity limits, and invariants](model-a.md) and [Experiments I-III](../../research/aerodynamics/experiments.md).
+A2.3 integrated the reviewed guidance into [architecture and existing documentation](../../architecture.md), including Issue #22 publication-status corrections.
 No source code, tests, public identifiers, speculative contracts, or implementation scaffolding are authorized by this taxonomy.
-The next gate is external A2.1 documentation review.
+Documentation completion does not establish empirical validation, finalize calibration, approve executable software contracts, or authorize implementation or Git publication/merging.

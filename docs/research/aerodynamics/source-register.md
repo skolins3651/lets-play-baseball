@@ -9,7 +9,7 @@ Merged code and adopted contracts govern implemented behavior; explicit approved
 Original publications support scientific claims within their measured or modeled scope.
 LPB audits interpret sources and expose limitations; they are not additional experiments.
 Historical handoffs establish conceptual intent without establishing executable contracts.
-The current authorization selects working references while retaining their provisional scientific status.
+The historical A2.1 authorization selected working references while retaining their provisional scientific status.
 
 **Direct A2.1** means relevant primary text, equations, tables, or figures were inspected during this drafting pass; it does not mean raw data were reprocessed or every assertion independently replicated.
 **Archive verification** means a supplied LPB audit reports primary inspection; that claim is attributed to that audit, not presented as new direct access here.
@@ -60,7 +60,7 @@ Their anonymous unpublished-report references are given here by title, using n.d
 *LPB — Model A documentation-first handoff*. (n.d.). [Unpublished project handoff].
 
 Direct A2.1 access to the supplied handoff text; it records provisional Nathan/ASR-B, R1-U, constant drag, and the three experiments.
-Its earlier read-only planning instructions describe A1, not the current authorization to draft A2.1.
+Its earlier read-only planning instructions describe A1, not the subsequent A2.1 drafting authorization.
 Its phrase "C_D = 0.35 default" is qualified by the implemented contract: an illustrative Lab form value, not an implicit Physics default.
 
 ### H02 - Recovered taxonomy

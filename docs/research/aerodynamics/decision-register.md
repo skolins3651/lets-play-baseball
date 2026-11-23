@@ -15,7 +15,7 @@ No numerical verification result is empirical validation, and no reference selec
 ## D01 - Model A first
 
 - **Decision/status:** Adopted scope: only Smooth Magnus A is selected for the initial [Issue #7](https://github.com/skolins3651/lets-play-baseball/issues/7) aerodynamic implementation. B-D are deferred; E-G remain exploratory and deferred.
-- **Stage/evidence:** Original November 13-14 taxonomy, subsequent research through November 22, and current A2.1 authorization; H01/H02, R01-R06, and S02/S16 delimit the evidence.
+- **Stage/evidence:** Original November 13-14 taxonomy, subsequent research through November 22, and historical A2.1 authorization; H01/H02, R01-R06, and S02/S16 delimit the evidence.
 - **Rationale:** Establish an interpretable empirical baseline before spending complexity on insufficiently calibrated seam/attitude/history models.
 - **Alternatives:** The original possible early implementation of A-D; direct orientation-resolved or geometry/flow approaches.
 - **Not established:** A does not contain all real-baseball lift, and choosing A does not show that omitted physics is absent or unimportant in every regime.
@@ -69,7 +69,7 @@ No numerical verification result is empirical validation, and no reference selec
 ## D07 - Retain constant drag for the initial investigation
 
 - **Decision/status:** Adopted current baseline: retain configurable constant-C_D drag, including illustrative `C_D = 0.35`. Drag refinement is deferred research, not a prerequisite to Experiment I.
-- **Stage/evidence:** Existing [drag contract](../../physics/drag-model.md), H01, and current A2.1 authorization; S01/S16/S17 show why universality would be unjustified.
+- **Stage/evidence:** Existing [drag contract](../../physics/drag-model.md), H01, and historical A2.1 authorization; S01/S16/S17 show why universality would be unjustified.
 - **Rationale:** Hold a known baseline while isolating lift and rotational effects; avoid changing multiple uncertain coefficient laws simultaneously.
 - **Alternatives:** Reynolds-, spin-, construction-, or seam-dependent drag; joint coefficient calibration when evidence supports it.
 - **Not established:** A universal calibrated drag value. Physics requires caller-supplied parameters and has no implicit default; 0.35 is the Lab's illustrative form value. The H01 wording "default" must not change that contract.
@@ -86,17 +86,17 @@ No numerical verification result is empirical validation, and no reference selec
 
 ## D09 - Preserve all three experiments
 
-- **Decision/status:** Experiment I is the current scientific investigation; Experiments II-III are deferred and preserved. Their execution and detailed specification are outside A2.1.
+- **Decision/status:** Experiment I is the current scientific investigation; Experiments II-III are deferred and preserved. Their execution and detailed specification were outside the A2.1 scope; A2.2 subsequently documented the scientific program and proposed procedures, without authorizing execution.
 - **Stage/evidence:** Original experimental program as recovered in H02, carried forward in H01; later lift/ASR comparisons supplement I's original objective.
 - **Rationale:** I compares A/R0 with A/R1 to investigate trajectory and rotational energy. II compares B with C or D under identical torque assumptions and compatible underlying data to isolate averaging. III compares C with D, using R1/R2 where supported, to test added orientation information.
 - **Alternatives:** Earlier broader near-term A-D program or a larger comparison matrix; neither is currently selected. Start fixed-axis comparisons where appropriate before adding precession.
 - **Not established:** No new experiment numbers, calibrated expected trajectory differences, complete measurements, or implementation protocol matrix are inferred from the names.
-- **Dependencies/revisit:** #7/#10/#11; later comparison/export work remains separately scoped. A2.2 must retain original objectives and distinguish later proposed measurements. Revisit II/III when their coefficient data, phase/attitude treatment, and controls can be specified defensibly.
+- **Dependencies/revisit:** #7/#10/#11; later comparison/export work remains separately scoped. The [A2.2 experimental program](experiments.md) retains original objectives and distinguishes later proposed measurements. Revisit II/III when their coefficient data, phase/attitude treatment, and controls can be specified defensibly.
 
 ## D10 - Complexity follows identifiable evidence
 
 - **Decision/status:** Adopted modeling discipline: a simpler provisional formulation may be selected when added complexity cannot be calibrated or experimentally discriminated. Each concrete simplification needs its own rationale and reconsideration criteria.
-- **Stage/evidence:** Current authorization and H02; R02/R06/R08 demonstrate missing fit/torque information alongside evidence of real physical effects.
+- **Stage/evidence:** Historical A2.1 authorization and H02; R02/R06/R08 demonstrate missing fit/torque information alongside evidence of real physical effects.
 - **Rationale:** Additional terms without identified parameters can create apparent precision. Scientific defensibility and experimental validation are distinct standards.
 - **Alternatives:** Richer nonlinear/state-dependent models when justified; sensitivity comparisons where data cannot choose uniquely.
 - **Not established:** Simplicity is not proof of higher predictive accuracy or absence of omitted physics. A small modeled pitch effect does not establish insignificance over multi-second fly-ball flight.
@@ -122,14 +122,14 @@ No numerical verification result is empirical validation, and no reference selec
 
 ## D13 - Preserve current numerical contracts and stage integration separately
 
-- **Decision/status:** Adopted A2.1 scope: three standalone documentation drafts only. Model A equations/experimental specifications are deferred to A2.2; repository-wide integration is deferred to A2.3; executable design/implementation needs separate authorization.
-- **Evidence/stage:** Current authorization; merged baseline `0cfcf23cbd33483d4f09ded7340ae3b3d48e9a75`, [PR #24](https://github.com/skolins3651/lets-play-baseball/pull/24), current [gravity](../../physics/gravity-only-contract.md)/[drag](../../physics/drag-model.md) contracts.
-- **Rationale/alternatives:** Keep reviewable batches and retain established regressions and numerical guarantees. Immediate integration or speculative common interfaces would exceed this batch.
-- **Not established:** Existing gravity/drag concavity, single-apex, contact, and event-sign assumptions do not automatically extend to lift. A2.2 must assess them; no replacement is designed here.
-- **Dependencies/revisit:** #7 follows completed [#22](https://github.com/skolins3651/lets-play-baseball/issues/22). Existing wording calling #22 unpublished is stale: it was merged through #24; correcting existing files remains A2.3 work. Advance only through the authorized review gates.
+- **Decision/status:** Adopted A2.1 scope: three standalone documentation drafts only. Model A equations/experimental specifications were deferred to A2.2 and repository-wide integration to A2.3; those separately reviewed documentation stages were subsequently completed. Executable design/implementation needs separate authorization.
+- **Evidence/stage:** Historical A2.1 authorization; merged baseline `0cfcf23cbd33483d4f09ded7340ae3b3d48e9a75`, [PR #24](https://github.com/skolins3651/lets-play-baseball/pull/24), current [gravity](../../physics/gravity-only-contract.md)/[drag](../../physics/drag-model.md) contracts.
+- **Rationale/alternatives:** Keep reviewable batches and retain established regressions and numerical guarantees. Immediate integration or speculative common interfaces would have exceeded the A2.1 scope.
+- **Not established:** Existing gravity/drag concavity, single-apex, contact, and event-sign assumptions do not automatically extend to lift. A2.2 documented the reassessment obligations in the [Model A event audit](../../physics/spin/model-a.md#9-existing-contact-apex-and-evaluation-assumptions-to-revisit); no replacement is designed here.
+- **Dependencies/revisit:** #7 follows completed [#22](https://github.com/skolins3651/lets-play-baseball/issues/22). Issue #22 was merged through #24; A2.3 subsequently corrected the outdated publication wording in existing documentation. Advance only through the authorized review gates.
 
-## Deliberate deferrals and review gate
+## Deliberate deferrals and documentation status
 
-Still deferred: B-G mathematical/implementation contracts; R2/R3 and full attitude; precise lift/torque calibration and uncertainty distributions; advanced drag; full atmosphere/wind; low-speed torque unification; detailed experiment protocols and outputs; public policy identifiers/configuration schemas; stochastic/persistence infrastructure; and visualizer/export changes.
-Restricted or unrecovered primary sources and apparatus calibration gaps remain visible in the source register; they limit scientific claims but do not block this bounded documentation draft.
-External A2.1 review is next. These files remain local and uncommitted; no A2.2/A2.3 work, code changes, publication, or GitHub modifications are authorized by their existence.
+Still deferred: B-G mathematical/implementation contracts; R2/R3 and full attitude; precise lift/torque calibration and uncertainty distributions; advanced drag; full atmosphere/wind; low-speed torque unification; executable experiment protocols and reporting infrastructure; public policy identifiers/configuration schemas; stochastic/persistence infrastructure; and visualizer/export changes.
+Restricted or unrecovered primary sources and apparatus calibration gaps remain visible in the source register; they limit scientific claims within the approved documentation baseline.
+A2.1-A2.3 documentation is complete; executable design/implementation and Git publication/merging require separate authorization.
