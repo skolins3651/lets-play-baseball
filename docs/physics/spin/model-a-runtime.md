@@ -1,6 +1,6 @@
-# Model A contracts, mathematics, and checked duration runtime — B2-I1/I2/I3
+# Model A contracts, mathematics, and checked duration runtime
 
-> **Status:** B2-D architecture and B2-N numerical design approved on November 23, 2026. B2-I1/I2 independently approved and merged through PR #27/#28. B2-I3 checked duration runtime independently reviewed and approved; awaiting PR/CI review plus separate merge authorization; I4 remains pending separate authorization.\
+> **Status:** B2-D architecture and B2-N numerical design approved on November 23, 2026. B2-I1/I2/I3 independently approved and merged through PR #27/#28/#29. B2-I4 verification passed independent review and awaits PR and CI review and separate merge authorization.\
 > **Scientific authority:** [Model A](model-a.md), [physical conventions](../conventions.md), and the [decision register](../../research/aerodynamics/decision-register.md).\
 > **Architecture:** [project overview](../../architecture.md).
 
@@ -8,7 +8,7 @@
 
 B2-I1 introduces immutable, engine-independent inputs and sample/result contracts in `Lpb.Physics`. The independently approved and merged B2-I2 implementation adds internal coupled derivatives and typed nine-component classical RK4 advancement. The independently reviewed I3 implementation adds `ModelASimulator.Simulate(ModelAFlightRequest request, ModelAParameters parameters)`, returning a duration-complete `ModelASimulationResult` only after the fixed B2-N checks pass. Existing gravity/drag public APIs, `FlightModelKind`, B1 mathematical kernels, six-component integration, legacy numerical guards, events, and visualizer behavior remain unchanged. Model A has no continuous evaluation, contact, or maximum-height query.
 
-The independently approved B2 numerical policy governs checked execution. The I3 implementation and local validation have passed independent review and await PR/CI review plus separate merge authorization. Numerical acceptance is not certified accumulated error, global convergence, independent full-trajectory accuracy, or empirical validation. Scientific fit constants and beta remain provisional.
+The independently approved B2 numerical policy governs checked execution. The I3 implementation passed independent review and merged through [PR #29](https://github.com/skolins3651/lets-play-baseball/pull/29). [I4 independent trajectory verification](model-a-verification.md) measures accuracy on specified fixtures. Scientific fit constants and beta remain provisional.
 
 ## Internal coupled mathematics — B2-I2
 
@@ -85,7 +85,7 @@ Completed nonconstant angular components retain sign, remain nonzero, and do not
 
 Only A→F, A→M, and M→H receive speed/energy diagnostics; M→F is not a physical advance. Translational scratch states receive neither diagnostic. With exact Q_v = sum(T_velocity,i²), speed requires J U_b ≤ J U_a + JgΔt + sqrt(Q_v), using outward bounds. Energy compares exact J²[sum((v_b,i − v_a,i)(v_b,i + v_a,i)) + 2g(z_b − z_a)] to a lower bound for 2J(U_a + gΔt)sqrt(Q_v) + Q_v + 2JgT_position,z. This avoids subtracting separately enormous energies.
 
-Exact-model restrictions motivate these checks; their numerical slack is engineering compatibility allowance, not certified endpoint error. Acceptance does not establish accumulated error, global convergence, empirical lift/beta calibration, useful relative accuracy beneath absolute floors, or between-sample event completeness. I4 comprehensive independent coupled-trajectory references remain separate work.
+Exact-model restrictions motivate these checks; their numerical slack is engineering compatibility allowance, not certified endpoint error. Acceptance does not establish accumulated error, global convergence, empirical lift/beta calibration, useful relative accuracy beneath absolute floors, or between-sample event completeness. I4 independently reviewed coupled-trajectory results are documented in the [verification report](model-a-verification.md).
 
 ## Public inputs and samples
 
@@ -156,15 +156,17 @@ The I1 NUnit contract tests cover composition/equality, scalar boundaries, expli
 
 I2 adds independent coupled-force/torque references, derivative-level energy and prescribed-circle identities, stage-specific reactivation/coupling, nine-component manufactured ODEs, analytical rotations, and fourth-order convergence checks. Its independent test-only rational reference remains separate from I3 production arithmetic. Tests cover every derivative component at every RK4 stage, intermediate/final arithmetic failures, and preservation of constituent error context. Zero-spin R0 translation is also compared bitwise with the unchanged six-component path. These are mathematical-unit checks, not I4 full-runtime verification.
 
-I3 adds independent rational certificates for the approved budget ties, spacing/loss boundaries, subnormal loss, cancellation, quotient remainder, square-root inequalities, bounded-work guards, and coefficient enclosures. Policy/runtime tests cover the closed invariants, rates, angular/axis conditions, physical diagnostics, amplification counterexamples, full endpoint retention, twelve evaluations, clock/subdivision boundaries, immutable results, and checked versus unchecked provenance. Targeted constant-speed gyro, prescribed-polynomial damping, and analytical-circle fixtures remain I3 checks; comprehensive coupled references and systematic convergence evidence are deferred to I4. Representative warmed Release runtime/allocation measurements and the original unaltered B2-N sources accompany the external review packet.
+I3 adds independent rational certificates for the approved budget ties, spacing/loss boundaries, subnormal loss, cancellation, quotient remainder, square-root inequalities, bounded-work guards, and coefficient enclosures. Policy/runtime tests cover the closed invariants, rates, angular/axis conditions, physical diagnostics, amplification counterexamples, full endpoint retention, twelve evaluations, clock/subdivision boundaries, immutable results, and checked versus unchecked provenance. Targeted constant-speed gyro, prescribed-polynomial damping, and analytical-circle fixtures remain I3 checks.
+
+I4 adds all-component recorded-time comparisons against six independent high-precision trajectories, analytical reductions and tilted circular motion, energy-balance and convergence evidence, and Windows runtime measurements. See the [I4 verification report](model-a-verification.md) for regeneration and results.
 
 | Stage | Current implementation status |
 | --- | --- |
 | B2-I1 | Contracts and private provenance implemented, independently approved, and merged through PR #27. |
 | B2-I2 | Internal coupled dynamics and typed nine-component RK4 independently approved and merged through PR #28. |
-| B2-I3 | Checked duration runtime and complete fixed B2-N machinery independently reviewed and approved; awaiting PR/CI review plus separate merge authorization. |
-| B2-I4 | Independent verification of the complete checked trajectory producer remains pending. |
+| B2-I3 | Checked duration runtime and complete fixed B2-N machinery independently approved and merged through PR #29. |
+| B2-I4 | Independent verification of the checked trajectory producer independently approved and awaiting PR and CI review and separate merge authorization. |
 
-B2-I3 independent approval does not replace PR/CI review or separate merge authorization. Scientific coefficients remain provisional; numerical checking and mathematical tests do not empirically calibrate them.
+B2 completion remains subject to I4 PR and CI review and successful merge closeout.
 
 Complete states and private original inputs are retained for later reconstruction. B3 must separately approve coupled evaluation and event guarantees, including original-anchor retention, earlier-contact exclusion, tangencies, unresolved intervals, and optional-query failures. Recorded samples alone cannot establish between-sample ground clearance. ASR-A remains separately authorized after ASR-B verification and need not depend on B3.
