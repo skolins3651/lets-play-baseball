@@ -8,6 +8,15 @@ internal static class SpinRk4Integrator
         double endTime,
         SpinFlightState state,
         Func<double, SpinFlightState, SpinFlightDerivative> evaluate)
+        => Step(startTime, endTime, state, evaluate, null);
+
+    // Passive I3 instrumentation: the four-stage arithmetic below is unchanged.
+    internal static SpinFlightState Step(
+        double startTime,
+        double endTime,
+        SpinFlightState state,
+        Func<double, SpinFlightState, SpinFlightDerivative> evaluate,
+        Action<double, double, double>? observeCoefficients)
     {
         ArgumentNullException.ThrowIfNull(evaluate);
         var interval = endTime - startTime;
@@ -24,6 +33,7 @@ internal static class SpinRk4Integrator
         if (!double.IsFinite(midpoint) || midpoint <= startTime || midpoint >= endTime)
             throw new ArithmeticException($"Spin RK4 has no representable interior midpoint between {startTime:R} and {endTime:R} s.");
 
+        observeCoefficients?.Invoke(interval, halfStep, sixthStep);
         var k1 = Evaluate(evaluate, startTime, state, "k1 derivative");
         var k2 = Evaluate(evaluate, midpoint, AddScaled(state, k1, halfStep, "k2 state"), "k2 derivative");
         var k3 = Evaluate(evaluate, midpoint, AddScaled(state, k2, halfStep, "k3 state"), "k3 derivative");

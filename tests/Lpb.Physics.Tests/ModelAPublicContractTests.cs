@@ -64,7 +64,7 @@ public class ModelAPublicContractTests
             "GroundContactSettings", "SimulationResult", "TrajectoryMeasurements", "TrajectorySample", "Vector3d"
         };
         var exported = typeof(FlightState).Assembly.GetExportedTypes();
-        Assert.That(exported.Select(t => t.Name), Is.EquivalentTo(legacyNames.Concat(NewContracts.Select(t => t.Name))));
+        Assert.That(exported.Select(t => t.Name), Is.EquivalentTo(legacyNames.Concat(NewContracts.Select(t => t.Name)).Append(nameof(ModelASimulator))));
         Assert.That(Enum.GetNames<FlightModelKind>(), Is.EqualTo(new[] { "GravityOnly", "GravityAndDrag" }));
         Assert.That((int)FlightModelKind.GravityOnly, Is.Zero);
         Assert.That((int)FlightModelKind.GravityAndDrag, Is.EqualTo(1));

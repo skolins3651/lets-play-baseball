@@ -3,22 +3,32 @@ namespace Lpb.Physics;
 // Retained inputs are private to the result's implementation, not part of its public graph.
 internal sealed class ModelAFlightProvenance
 {
-    // This identifies the approved future policy; declaring it does not attest execution.
+    // Declaring the approved policy does not attest that an execution occurred.
     internal const string ApprovedNumericalPolicyIdentity = "classical-rk4/indexed-v1;model-a-full-state-v1";
 
     internal ModelAFlightProvenance(ModelAFlightRequest request, ModelAParameters parameters)
+        : this(request, parameters, false)
+    {
+    }
+
+    private ModelAFlightProvenance(ModelAFlightRequest request, ModelAParameters parameters, bool checkedExecution)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(parameters);
         Request = request;
         Parameters = parameters;
+        NumericalPolicyIdentity = checkedExecution ? ApprovedNumericalPolicyIdentity : null;
     }
 
     internal ModelAFlightRequest Request { get; }
     internal ModelAParameters Parameters { get; }
     internal string ModelIdentity => Parameters.PrescriptionIdentity;
 
-    // I1 has no checked producer. Only a later authorized runtime can populate this.
+    // Only ModelASimulator calls this factory, after every ordinary interval passed B2-N.
+    internal static ModelAFlightProvenance AfterCheckedDuration(ModelAFlightRequest request, ModelAParameters parameters) =>
+        new(request, parameters, true);
+
+    // Unchecked internal contract fixtures retain null; no public attestation selector exists.
     internal string? NumericalPolicyIdentity { get; }
 
     internal void ValidateRequest(ModelAFlightRequest request)
