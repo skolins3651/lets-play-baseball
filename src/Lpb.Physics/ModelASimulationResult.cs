@@ -5,7 +5,7 @@ namespace Lpb.Physics;
 
 /// <summary>An immutable, duration-complete Model A sample snapshot.</summary>
 /// <remarks>
-/// There is no public constructor or Model A simulator in I1. Internal construction
+/// There is no public constructor. ModelASimulator produces checked duration results; internal construction
 /// validates sample structure and retained inputs, not dynamics or numerical acceptance.
 /// </remarks>
 public sealed class ModelASimulationResult
