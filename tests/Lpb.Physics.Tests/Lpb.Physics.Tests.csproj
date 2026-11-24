@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="../../src/Lpb.Physics/Lpb.Physics.csproj" />
     <EmbeddedResource Include="Fixtures/drag-reference.json" LogicalName="drag-reference.json" />
+    <EmbeddedResource Include="Fixtures/model-a-reference.json" LogicalName="model-a-reference.json" />
   </ItemGroup>
 
 </Project>
